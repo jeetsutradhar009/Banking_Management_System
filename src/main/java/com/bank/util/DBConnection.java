@@ -8,16 +8,16 @@ import java.sql.Statement;
 
 public class DBConnection {
 
-    private static final String DB_NAME = "online_banking";
+    private static final String DB_NAME = "defaultdb";
 
     private static final String SERVER_URL =
-            "jdbc:mysql://localhost:3306/?useSSL=false&serverTimezone=UTC";
+            "jdbc:mysql://mysql-15650342-jeetsutradhar009-6ca0.l.aivencloud.com:16858/?useSSL=true&serverTimezone=UTC";
 
     private static final String DB_URL =
-            "jdbc:mysql://localhost:3306/" + DB_NAME + "?useSSL=false&serverTimezone=UTC";
+            "jdbc:mysql://mysql-15650342-jeetsutradhar009-6ca0.l.aivencloud.com:16858/" + DB_NAME + "?useSSL=true&serverTimezone=UTC";
 
-    private static final String USERNAME = "root";
-    private static final String PASSWORD = "";
+    private static final String USERNAME = "avnadmin";
+    private static final String PASSWORD = "REMOVED_SECRET";
 
     public static Connection getConnection() {
         Connection con = null;
