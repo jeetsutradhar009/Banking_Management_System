@@ -146,10 +146,10 @@
 
             <div class="search-box">
                 <i class="bi bi-search"></i>
-                <input type="text" placeholder="Search for services, transactions, beneficiaries...">
+                <input type="text" placeholder="Search account, profile, services...">
             </div>
 
-            <div class="top-actions">
+            <div class="top-actions" style="flex-wrap: nowrap; min-width: max-content;">
 
                 <button class="icon-btn" type="button" onclick="return comingSoon('Notifications');">
                     <i class="bi bi-bell"></i>
