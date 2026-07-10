@@ -15,6 +15,7 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 
 @WebServlet("/admin/generate-report")
 public class GenerateReportServlet extends HttpServlet {
@@ -39,7 +40,10 @@ public class GenerateReportServlet extends HttpServlet {
             writeAccounts(out, adminDAO.getAllAccounts());
             writeTransactions(out, adminDAO.getAllTransactions());
 
-            adminDAO.logAction("GENERATE_REPORT", "Admin downloaded CSV report");
+            HttpSession session = request.getSession(false);
+            User actor = session != null ? (User) session.getAttribute("user") : null;
+
+            adminDAO.logAction(actor, "GENERATE_REPORT", "Admin downloaded CSV report");
 
         } catch (Exception e) {
             throw new ServletException(e);
