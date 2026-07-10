@@ -296,7 +296,7 @@ public class AdminDAO {
         return transactions;
     }
 
-    public boolean addUser(String fullName, String email, String phone, String password, String role) throws SQLException {
+    public boolean addUser(User actor, String fullName, String email, String phone, String password, String role) throws SQLException {
         String sql = "INSERT INTO users(full_name, email, phone, password, role) VALUES(?,?,?,?,?)";
 
         try (Connection con = DBConnection.getConnection();
@@ -310,13 +310,13 @@ public class AdminDAO {
 
             int rows = ps.executeUpdate();
 
-            logAction(con, "ADD_USER", "Admin added new user: " + email);
+            logAction(con, actor, "ADD_USER", "Admin added new user: " + email);
 
             return rows > 0;
         }
     }
 
-    public boolean changeAccountStatus(String accountNumber, String newStatus) throws SQLException {
+    public boolean changeAccountStatus(User actor, String accountNumber, String newStatus) throws SQLException {
         String sql = "UPDATE accounts SET status = ? WHERE account_number = ?";
 
         try (Connection con = DBConnection.getConnection();
@@ -328,7 +328,7 @@ public class AdminDAO {
             int rows = ps.executeUpdate();
 
             if (rows > 0) {
-                logAction(con, "ACCOUNT_STATUS", "Account " + accountNumber + " status changed to " + newStatus);
+                logAction(con, actor, "ACCOUNT_STATUS", "Account " + accountNumber + " status changed to " + newStatus);
             }
 
             return rows > 0;
@@ -361,7 +361,7 @@ public class AdminDAO {
         return rows.isEmpty() ? null : rows.get(0);
     }
 
-    public boolean addBalance(String accountNumber, BigDecimal amount, String note) throws SQLException {
+    public boolean addBalance(User actor, String accountNumber, BigDecimal amount, String note) throws SQLException {
         String findSql = "SELECT balance, status FROM accounts WHERE account_number = ? FOR UPDATE";
 
         String updateSql = "UPDATE accounts SET balance = balance + ? WHERE account_number = ?";
@@ -409,7 +409,7 @@ public class AdminDAO {
 
                 String finalNote = (note == null || note.isBlank()) ? "No note" : note.trim();
 
-                logAction(con, "ADD_BALANCE", "Admin added ₹" + amount + " to account " + accountNumber + ". Note: " + finalNote);
+                logAction(con, actor, "ADD_BALANCE", "Admin added ₹" + amount + " to account " + accountNumber + ". Note: " + finalNote);
 
                 con.commit();
                 return true;
@@ -429,7 +429,7 @@ public class AdminDAO {
         }
     }
 
-    public String createAccount(int userId, String accountType, BigDecimal openingBalance) throws SQLException {
+    public String createAccount(User actor, int userId, String accountType, BigDecimal openingBalance) throws SQLException {
         String checkUserSql = "SELECT user_id FROM users WHERE user_id = ?";
 
         String insertSql = "INSERT INTO accounts(user_id, account_number, account_type, balance, status) " +
@@ -460,7 +460,7 @@ public class AdminDAO {
                     insertPs.executeUpdate();
                 }
 
-                logAction(con, "CREATE_ACCOUNT", "Admin created account " + accountNumber + " for user ID " + userId);
+                logAction(con, actor, "CREATE_ACCOUNT", "Admin created account " + accountNumber + " for user ID " + userId);
 
                 con.commit();
 
@@ -482,22 +482,56 @@ public class AdminDAO {
     }
 
     public List<Map<String, Object>> getAuditLogs() throws SQLException {
-        String sql = "SELECT log_id, action, description, created_at FROM audit_logs ORDER BY log_id DESC";
+        String sql = "SELECT log_id, actor_type, actor_identifier, actor_name, action, description, created_at " +
+                     "FROM audit_logs ORDER BY log_id DESC";
         return queryList(sql);
     }
 
+    // Kept for any old caller that doesn't have an actor available.
     public void logAction(String action, String description) throws SQLException {
+        logAction((User) null, action, description);
+    }
+
+    public void logAction(User actor, String action, String description) throws SQLException {
         try (Connection con = DBConnection.getConnection()) {
-            logAction(con, action, description);
+            logAction(con, actor, action, description);
         }
     }
 
+    // Kept for internal callers that don't pass an actor.
     private void logAction(Connection con, String action, String description) throws SQLException {
-        String sql = "INSERT INTO audit_logs(action, description) VALUES(?,?)";
+        logAction(con, null, action, description);
+    }
+
+    private void logAction(Connection con, User actor, String action, String description) throws SQLException {
+        String sql = "INSERT INTO audit_logs(actor_type, actor_user_id, actor_identifier, actor_name, action, description) " +
+                     "VALUES (?,?,?,?,?,?)";
+
+        String actorType = "USER";
+        Integer actorUserId = null;
+        String actorIdentifier = null;
+        String actorName = "UNKNOWN";
+
+        if (actor != null) {
+            actorType = "ADMIN".equalsIgnoreCase(actor.getRole()) ? "ADMIN" : "USER";
+            actorUserId = actor.getUserId();
+            actorIdentifier = actor.getCustomerId();
+            actorName = actor.getFullName();
+        }
 
         try (PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setString(1, action);
-            ps.setString(2, description);
+            ps.setString(1, actorType);
+
+            if (actorUserId != null) {
+                ps.setInt(2, actorUserId);
+            } else {
+                ps.setNull(2, java.sql.Types.INTEGER);
+            }
+
+            ps.setString(3, actorIdentifier);
+            ps.setString(4, actorName);
+            ps.setString(5, action);
+            ps.setString(6, description);
             ps.executeUpdate();
         }
     }
