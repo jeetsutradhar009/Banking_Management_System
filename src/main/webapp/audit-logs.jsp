@@ -100,6 +100,9 @@
     <meta charset="UTF-8">
     <title>Audit Logs - DKS Bank</title>
 
+    <!-- Bootstrap 5 (badges only — loaded first so oldStyle.css below still controls the rest of the page) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/oldStyle.css?v=207">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -208,9 +211,11 @@
                 <thead>
                 <tr>
                     <th>ID</th>
+                    <th>Performed By</th>
+                    <th>Role</th>
                     <th>Action</th>
-                    <th>Description</th>
                     <th>Status</th>
+                    <th>Description</th>
                     <th>Date / Time</th>
                 </tr>
                 </thead>
@@ -223,39 +228,92 @@
                             String logId = getValue(log, "log_id", "id", null);
                             String action = getValue(log, "action", null, null);
                             String description = getValue(log, "description", null, null);
+                            String actorType = getValue(log, "actor_type", "actorType", null);
+                            String actorName = getValue(log, "actor_name", "actorName", null);
+                            String actorIdentifier = getValue(log, "actor_identifier", "actorIdentifier", null);
                             String dateTime = formatDate(log.get("created_at"));
 
                             if (dateTime == null || dateTime.trim().isEmpty()) {
                                 dateTime = formatDate(log.get("createdAt"));
                             }
 
+                            String upperAction = action.toUpperCase();
                             String upperDescription = description.toUpperCase();
 
-                            String statusText = "INFO";
-                            String statusClass = "audit-status-badge audit-status-info";
+                            // ----- Status badge (Bootstrap 5) -----
+                            // Rules:
+                            //   LOGIN, REGISTER_ONLINE_BANKING            -> SUCCESS (teal)
+                            //   ACCOUNT_STATUS + description has FROZEN  -> FROZEN (red)
+                            //   ACCOUNT_STATUS + description has ACTIVE  -> ACTIVE (green)
+                            //   everything else                          -> INFO (blue)
+                            String statusText;
+                            String statusClass;
 
-                            if (upperDescription.contains("FROZEN")) {
+                            if ("ACCOUNT_STATUS".equals(upperAction) && upperDescription.contains("FROZEN")) {
                                 statusText = "FROZEN";
-                                statusClass = "audit-status-badge audit-status-frozen";
-                            } else if (upperDescription.contains("ACTIVE")) {
+                                statusClass = "badge rounded-pill bg-danger-subtle text-danger border border-danger-subtle";
+                            } else if ("ACCOUNT_STATUS".equals(upperAction) && upperDescription.contains("ACTIVE")) {
                                 statusText = "ACTIVE";
-                                statusClass = "audit-status-badge audit-status-active";
+                                statusClass = "badge rounded-pill bg-success-subtle text-success border border-success-subtle";
+                            } else if ("LOGIN".equals(upperAction) || "REGISTER_ONLINE_BANKING".equals(upperAction)) {
+                                statusText = "SUCCESS";
+                                statusClass = "badge rounded-pill bg-info-subtle text-info border border-info-subtle";
+                            } else {
+                                statusText = "INFO";
+                                statusClass = "badge rounded-pill bg-primary-subtle text-primary border border-primary-subtle";
                             }
 
                             String actionIcon = "bi bi-activity";
 
-                            if ("ACCOUNT_STATUS".equalsIgnoreCase(action)) {
+                            if ("ACCOUNT_STATUS".equals(upperAction)) {
                                 actionIcon = "bi bi-shield-lock";
-                            } else if (action.toUpperCase().contains("BALANCE")) {
+                            } else if (upperAction.contains("BALANCE")) {
                                 actionIcon = "bi bi-cash-stack";
-                            } else if (action.toUpperCase().contains("USER")) {
+                            } else if (upperAction.contains("USER")) {
                                 actionIcon = "bi bi-person-plus";
+                            } else if ("LOGIN".equals(upperAction)) {
+                                actionIcon = "bi bi-box-arrow-in-right";
+                            } else if ("LOGOUT".equals(upperAction)) {
+                                actionIcon = "bi bi-box-arrow-right";
+                            } else if (upperAction.contains("TRANSFER")) {
+                                actionIcon = "bi bi-arrow-left-right";
+                            } else if (upperAction.contains("PASSWORD")) {
+                                actionIcon = "bi bi-key";
+                            } else if (upperAction.contains("REPORT")) {
+                                actionIcon = "bi bi-file-earmark-bar-graph";
                             }
+
+                            // Action badge uses the original brand-styled pill (teal icon, navy text)
+
+                            String performedByText = actorName != null && !actorName.trim().isEmpty()
+                                    ? actorName : "System";
+
+                            if (actorIdentifier != null && !actorIdentifier.trim().isEmpty()) {
+                                performedByText += " (" + actorIdentifier + ")";
+                            }
+
+                            // ----- Role badge (Bootstrap 5) -----
+                            boolean isAdminActor = "ADMIN".equalsIgnoreCase(actorType);
+                            String roleBadgeClass = isAdminActor
+                                    ? "badge rounded-pill bg-danger-subtle text-danger border border-danger-subtle"
+                                    : "badge rounded-pill bg-success-subtle text-success border border-success-subtle";
+                            String roleText = actorType != null && !actorType.trim().isEmpty() ? actorType : "-";
                 %>
 
                 <tr>
                     <td>
                         <span class="audit-id">#<%= logId %></span>
+                    </td>
+
+                    <td>
+                        <div class="audit-description">
+                            <i class="bi bi-person-circle"></i>
+                            <span><%= performedByText %></span>
+                        </div>
+                    </td>
+
+                    <td>
+                        <span class="<%= roleBadgeClass %>"><%= roleText %></span>
                     </td>
 
                     <td>
@@ -266,14 +324,14 @@
                     </td>
 
                     <td>
+                        <span class="<%= statusClass %>"><%= statusText %></span>
+                    </td>
+
+                    <td>
                         <div class="audit-description">
                             <i class="bi bi-file-text"></i>
                             <span><%= description %></span>
                         </div>
-                    </td>
-
-                    <td>
-                        <span class="<%= statusClass %>"><%= statusText %></span>
                     </td>
 
                     <td>
@@ -290,7 +348,7 @@
                 %>
 
                 <tr>
-                    <td colspan="5" class="audit-empty-row">
+                    <td colspan="7" class="audit-empty-row">
                         <i class="bi bi-journal-x"></i>
                         <span>No audit logs found.</span>
                     </td>
