@@ -2,6 +2,7 @@ package com.bank.controller;
 
 import com.bank.dao.UserDAO;
 import com.bank.model.AccountOpenResult;
+import com.bank.util.AuditLogger;
 
 import java.io.IOException;
 
@@ -79,6 +80,10 @@ public class OpenAccountServlet extends HttpServlet {
                 request.setAttribute("customerId", result.getCustomerId());
                 request.setAttribute("accountNumber", result.getAccountNumber());
                 request.setAttribute("ifscCode", result.getIfscCode());
+
+                AuditLogger.logByIdentifier(result.getCustomerId(), firstName + " " + lastName,
+                        "OPEN_ACCOUNT", "New account opened: " + result.getAccountNumber()
+                                + " (Customer ID " + result.getCustomerId() + ")");
             } else {
                 request.setAttribute("error", result.getMessage());
             }
