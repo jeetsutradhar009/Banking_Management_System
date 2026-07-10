@@ -2,6 +2,7 @@ package com.bank.controller;
 
 import com.bank.dao.UserDAO;
 import com.bank.model.User;
+import com.bank.util.AuditLogger;
 
 import java.io.IOException;
 
@@ -91,6 +92,7 @@ public class ChangePasswordServlet extends HttpServlet {
 
         if (updated) {
             request.setAttribute("success", "Password updated successfully.");
+            AuditLogger.log(user, "CHANGE_PASSWORD", "User changed their account password");
         } else {
             request.setAttribute("error", "Current password is incorrect.");
         }
