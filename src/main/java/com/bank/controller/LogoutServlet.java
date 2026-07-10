@@ -1,5 +1,8 @@
 package com.bank.controller;
 
+import com.bank.model.User;
+import com.bank.util.AuditLogger;
+
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -21,6 +24,14 @@ public class LogoutServlet extends HttpServlet {
         HttpSession session = request.getSession(false);
 
         if (session != null) {
+            Object obj = session.getAttribute("user");
+
+            if (obj instanceof User) {
+                User user = (User) obj;
+                AuditLogger.log(user, "LOGOUT",
+                        ("ADMIN".equalsIgnoreCase(user.getRole()) ? "Admin" : "User") + " logged out");
+            }
+
             session.invalidate();
         }
 
