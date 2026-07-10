@@ -1,6 +1,7 @@
 package com.bank.controller;
 
 import com.bank.dao.AdminDAO;
+import com.bank.model.User;
 import com.bank.util.AdminAuth;
 
 import java.io.IOException;
@@ -13,6 +14,7 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 
 @WebServlet("/admin/accounts/create")
 public class CreateAccountServlet extends HttpServlet {
@@ -44,7 +46,10 @@ public class CreateAccountServlet extends HttpServlet {
                 throw new Exception("Opening balance cannot be negative");
             }
 
-            String accountNumber = adminDAO.createAccount(userId, accountType, openingBalance);
+            HttpSession session = request.getSession(false);
+            User actor = session != null ? (User) session.getAttribute("user") : null;
+
+            String accountNumber = adminDAO.createAccount(actor, userId, accountType, openingBalance);
 
             String msg = "Account created successfully: " + accountNumber;
 
