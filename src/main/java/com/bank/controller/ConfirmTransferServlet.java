@@ -4,6 +4,7 @@ import com.bank.dao.AccountDAO;
 import com.bank.dao.TransactionDAO;
 import com.bank.model.Account;
 import com.bank.model.User;
+import com.bank.util.AuditLogger;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -57,6 +58,10 @@ public class ConfirmTransferServlet extends HttpServlet {
             request.setAttribute("amount", amount);
             request.setAttribute("receiverAccount", receiverAccount);
             request.setAttribute("receiverName", receiverName);
+
+            AuditLogger.log(user, "FUND_TRANSFER",
+                    "Transferred \u20B9" + amount + " from " + sender.getAccountNumber()
+                            + " to " + receiverAccount + " (" + receiverName + ")");
 
             request.getRequestDispatcher("success.jsp").forward(request, response);
         } else {
