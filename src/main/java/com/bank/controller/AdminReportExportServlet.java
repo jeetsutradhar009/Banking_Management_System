@@ -2,6 +2,7 @@ package com.bank.controller;
 
 import com.bank.dao.AdminReportDAO;
 import com.bank.model.User;
+import com.bank.util.AuditLogger;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -44,6 +45,8 @@ public class AdminReportExportServlet extends HttpServlet {
 
         response.setContentType("text/csv");
         response.setHeader("Content-Disposition", "attachment; filename=DKS_Bank_Admin_Report.csv");
+
+        AuditLogger.log(user, "EXPORT_REPORT", "Admin exported the analytics CSV report");
 
         try (PrintWriter out = response.getWriter()) {
             out.println("DKS Bank Admin Report");
