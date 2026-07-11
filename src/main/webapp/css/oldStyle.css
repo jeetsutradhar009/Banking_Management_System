@@ -17201,3 +17201,24 @@ th {
         transform: translateY(0); /* Apni original position pe aayega */
     }
 }
+
+/* ===== Audit Logs table — align cell content under its column header ===== */
+/* Badges/pills (Role, Status, Action) carry their own internal padding on
+   top of the cell's padding, which was pushing their text further right
+   than the plain header text above it. Pulling them back a little with a
+   negative margin fixes the visual misalignment without touching the
+   badge's own padding/shape/colors. */
+.audit-table tbody td {
+    padding-left: 10px;
+}
+
+.audit-table td .badge,
+.audit-table td .audit-action-badge {
+    margin-left: -6px;
+}
+
+/* ===== Audit Logs search box — green border + soft glow on click/focus ===== */
+.audit-search-box:focus-within {
+    border-color: #009879;
+    box-shadow: 0 0 0 3px rgba(0, 152, 121, 0.15);
+}
