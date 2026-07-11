@@ -1,4 +1,4 @@
-# 🏦 Enterprise Online Banking System
+# 🏦 Banking Management System
 
 ![Java](https://img.shields.io/badge/Java-17_LTS-ED8B00?style=for-the-badge&logo=java&logoColor=white)
 ![Jakarta EE](https://img.shields.io/badge/Jakarta_EE-Servlets_&_JSP-005C84?style=for-the-badge&logo=jakartaee&logoColor=white)
@@ -6,138 +6,282 @@
 ![Apache Tomcat](https://img.shields.io/badge/Apache_Tomcat-10.1-F8DC75?style=for-the-badge&logo=apachetomcat&logoColor=black)
 ![Maven](https://img.shields.io/badge/Maven-Build_Tool-C71A36?style=for-the-badge&logo=apachemaven&logoColor=white)
 
-An enterprise-grade, framework-free web application replicating core operations of modern retail banking platforms. Built using a strict **Model-View-Controller (MVC)** design pattern, this system ensures high transaction availability, complete data isolation, and robust security logging without relying on heavy third-party backend frameworks.
+A full-stack, Java-based online banking web application — built with **Servlets, JSP, and JDBC**, backed by **MySQL/TiDB**, and deployed live on **Render**.
 
-Developed as a part of the **L&T Technical Training Program** at **Lamrin Tech Skills University (LTSU)**.
+It digitizes the core retail-banking workflow end to end: digital account opening, online-banking activation, secure login, atomic fund transfers, transaction history, PDF mini-statements, and a full administrative back office for customer, account, and transaction management.
+
+---
+
+## 🚀 Live Deployment
+
+> ### 🔗 **Live Website: [DKS_Online_Banking_System](https://dks-java-webapp-101.onrender.com)**
+
+
+The application is fully deployed and publicly accessible — not just a local demo.
+
+|**Sub** |**Links** |
+|---|---|
+| **Live URL** | [DKS_Online_Banking_System](https://dks-java-webapp-101.onrender.com) |
+| **Application Hosting** | [Render](https://render.com) |
+| **Database** | [TiDB Cloud](https://tidbcloud.com) (MySQL-compatible, serverless) |
+| **Status** | 🟢 Live |
+
+The app connects to the database purely through environment variables (see [Environment Variables](#-environment-variables) below) — there is no hardcoded host, username, or password anywhere in the source code, so the exact same codebase can be pointed at a local MySQL instance, TiDB Cloud, or any other MySQL-compatible database just by changing env vars. This is what makes the Render + TiDB deployment possible without modifying a single line of code.
 
 ---
 
 ## ✨ Key Features
 
-### 👤 Customer Workspace Portal
-* **Digital Onboarding:** Open a new bank account with a minimum initial deposit (₹500 constraint).
-* **Auto-Generation:** System automatically generates a secure 10-digit Customer ID, Account Number (`ACC...`), and IFSC Code.
-* **Smart Fund Transfers:** Execute secure peer-to-peer transfers. Features **AJAX-based asynchronous receiver verification** to prevent sending money to incorrect accounts.
-* **Real-time Passbook:** View dynamic transaction history (debits/credits) and download mini-statements.
-* **Profile Security:** Secure dual-layer authentication and profile management settings.
-
-### 🛡️ Master Admin Infrastructure Center
-* **Analytics Dashboard:** Graphical distribution of banking metrics (users, account types, transaction success rates) using Chart.js.
-* **Account Lifecycle Management:** Admins can instantly toggle account statuses between `ACTIVE` and `FROZEN` to mitigate fraudulent activities.
-* **System Auditing:** An immutable Audit Logs panel tracking all administrative overrides and database modifications in real-time.
-* **Financial Overrides:** Add balance securely directly from the admin panel.
-* **Export Reports:** Generate and download raw CSV reports of system metrics.
+- 🆔 **Digital Account Opening** — auto-generated Customer ID and Account Number
+- 🔐 **Two-Step Online Banking Activation** — physical account opening kept separate from digital activation
+- 👥 **Role-Based Login** — a single login gateway routes customers and admins to their own dashboards
+- 💸 **Atomic Fund Transfers** — debit, credit, and ledger entry execute inside one database transaction; a failure anywhere rolls the whole transfer back
+- 🔎 **Real-Time Receiver Verification** — AJAX lookup confirms the receiver's identity before a transfer is submitted
+- 📄 **Transaction History & PDF Mini Statements** — paginated Debit/Credit history, plus a downloadable statement
+- 🛠️ **Admin Console** — search/manage customers, accounts, and transactions from one place
+- ❄️ **Freeze / Unfreeze Accounts** and **Manual Balance Addition**
+- 📊 **Reports & CSV Export**, plus an **Audit Log** of sensitive admin actions
+- ☁️ **Live Cloud Deployment** on Render, with a TiDB-compatible MySQL database
 
 ---
 
-## 🛠️ Technology Stack
+## 🧰 Tech Stack
 
-* **Backend:** Java SE 17 LTS, Jakarta Servlets 6.0, JDBC (Java Database Connectivity)  
-* **Frontend:** JavaServer Pages (JSP), HTML5, CSS3 (Custom Fluid Layouts), Vanilla JavaScript, Bootstrap Icons  
-* **Database:** MySQL 8.0 (Normalized to 3NF)  
-* **Server:** Apache Tomcat 10.1  
-* **Build Tool & Dependency Management:** Apache Maven (`pom.xml`)  
-* **Libraries:** `librepdf:openpdf` (for dynamic PDF generation), `mysql-connector-j`
-
----
-
-# 🏗 Project Architecture
-
-
-
-OnlineBankingSystem
-│
-├── src
-│ ├── main
-│ │ ├── java
-│ │ │ └── com.bank
-│ │ │ ├── controller
-│ │ │ ├── dao
-│ │ │ ├── model
-│ │ │ ├── util
-│ │ │ └── filter
-│ │ │
-│ │ ├── resources
-│ │ │
-│ │ └── webapp
-│ │ ├── css
-│ │ ├── js
-│ │ ├── images
-│ │ ├── admin
-│ │ ├── customer
-│ │ └── WEB-INF
-│ │
-│ └── test
-│
-├── database.sql
-├── pom.xml
-└── README.md
-
+| Layer | Technology |
+|------|------------|
+| Language | ![Java](https://img.shields.io/badge/Java-17%20LTS-orange?style=flat-square&logo=openjdk&logoColor=white) |
+| Web Layer | ![Jakarta EE](https://img.shields.io/badge/Jakarta%20EE-Servlets%20%26%20JSP-00599C?style=flat-square&logo=eclipseide&logoColor=white) |
+| Data Access | ![JDBC](https://img.shields.io/badge/JDBC-PreparedStatement-4B8BBE?style=flat-square&logo=java&logoColor=white) |
+| Database | ![MySQL](https://img.shields.io/badge/MySQL%208%20%2F%20TiDB%20Cloud-MySQL%20Compatible-4479A1?style=flat-square&logo=mysql&logoColor=white) |
+| Local Development | ![XAMPP](https://img.shields.io/badge/XAMPP-Local%20MySQL%20Server-FB7A24?style=flat-square&logo=xampp&logoColor=white) |
+| Build Tool | ![Maven](https://img.shields.io/badge/Maven-Build%20Tool-C71A36?style=flat-square&logo=apachemaven&logoColor=white) |
+| PDF Generation | ![OpenPDF](https://img.shields.io/badge/OpenPDF-PDF%20Generation-0A7B83?style=flat-square) |
+| Front-End | ![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=flat-square&logo=html5&logoColor=white) ![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=flat-square&logo=css3&logoColor=white) ![JavaScript](https://img.shields.io/badge/JavaScript-AJAX-F7DF1E?style=flat-square&logo=javascript&logoColor=black) |
+| Hosting | ![Render](https://img.shields.io/badge/Render-Hosting-46E3B7?style=flat-square&logo=render&logoColor=black) |
 
 ---
 
-## 📂 Project Architecture (MVC)
+## 🏗️ Project Architecture(MVC)
 
-The project adheres to a strict MVC separation, ensuring clean, scalable, and maintainable code:
+The application follows a layered, MVC-inspired architecture:
 
-* **Controllers (`com.bank.controller`):** 27 specific Servlet routers intercepting HTTP requests, parsing data, and enforcing role-based access.  
-* **DAO Layer (`com.bank.dao`):** Core database execution blocks with strict ACID compliance. Utilizes manual transaction management (`con.setAutoCommit(false)`) and Row-Level Exclusive Locks (`SELECT ... FOR UPDATE`) to prevent concurrency anomalies.  
-* **Model Layer (`com.bank.model`):** Encapsulated Data Transfer Objects (POJOs) mapping directly to database tables.  
-* **View Layer (`src/main/webapp`):** 20+ secure `.jsp` templates hidden behind server-side data sanitization to prevent XSS.
+```
+Browser
+   │
+   ▼
+JSP (View)  ───────────────►  Servlet (Controller)
+                                     │
+                                     ▼
+                              DAO (Data Access / JDBC)
+                                     │
+                                     ▼
+                            MySQL / TiDB Database
+```
+
+- **`controller/`** — Servlets, one per route/action (e.g. `LoginServlet`, `TransferServlet`, `AdminServlet`)
+- **`dao/`** — every SQL statement in the app, using parameterized `PreparedStatement`s (`UserDAO`, `AccountDAO`, `TransactionDAO`, `AdminDAO`, `AdminReportDAO`)
+- **`model/`** — plain data classes (`User`, `Account`, `Transaction`, `RegistrationInfo`, `AccountOpenResult`)
+- **`util/`** — `DBConnection.java` (environment-variable-driven connection factory) and `AdminAuth.java`
+
+---
+
+## 🔄 Workflow
+
+**Customer flow:**
+
+```
+Open Account  →  Register for Online Banking  →  Login
+     │
+     ▼
+Dashboard  →  Fund Transfer → Confirm Transfer → Success
+     │
+     ├──►  Transaction History  →  Mini Statement (PDF)
+     ├──►  My Account  /  Change Password
+     └──►  Logout
+```
+
+**Admin flow:**
+
+```
+Login as Admin  →  Admin Dashboard
+     │
+     ├──►  Customer / Account / Transaction Management
+     ├──►  Add User   │   Freeze / Unfreeze Account   │   Add Balance
+     ├──►  Generate Reports (with CSV export)
+     ├──►  Audit Logs
+     └──►  Logout
+```
 
 ---
 
 ## ⚙️ Installation & Setup Guide
 
-1. **Clone the Repository**
-   ```bash
-   git clone https://github.com/jeetsutradhar009/Banking_Management_System.git
-   cd Banking_Management_System
 
-2. **Database Setup**
-* Open XAMPP and start the **MySQL** module.
-* Open phpMyAdmin (`http://localhost/phpmyadmin`).
-* Create a new database named `online_banking`.
-* Import the `database.sql` file provided in the root folder of the project.
 
-3. **Configure Database Credentials**
-* Navigate to `src/main/java/com/bank/util/DBConnection.java`.
-* Update the `DB_USER` and `DB_PASSWORD` variables to match your local MySQL configuration.
 
-4. **Build the Project with Maven**
-* Open your terminal in the project root directory and run:
-  ```bash
-  mvn install
 
-* Alternatively, in Eclipse: Right-click the project -> **Run As** -> **Maven Install**.
+Before building, make sure the required tools mentioned in **`requirements.txt`** are installed:
 
-5. **Deploy on Tomcat**
-* Add the project to your Apache Tomcat 10.1 server in Eclipse.
-* Right-click the server and click **Start**.
 
-6. **Access the Application**
-* Open your web browser and go to: [http://localhost:8080/OnlineBankingSystem](http://localhost:8080/OnlineBankingSystem)
+
+- Java 17+
+
+- Maven
+
+- MySQL-compatible database (XAMPP MySQL / MySQL Server / TiDB or Aiven Cloud)
+
+- Apache Tomcat 10.1
+
+
+
+
+
+### 1. Clone Repository
+
+
+
+```bash
+
+git clone https://github.com/jeetsutradhar009/Banking_Management_System.git
+
+
+
+cd Banking_Management_System
+
+```
+
+
+
+
+
+### 2. Build Project
+
+
+
+Run:
+
+
+
+```bash
+
+mvn clean package
+
+```
+
+
+
+This will download dependencies, compile the project, and generate:
+
+
+
+```
+
+target/OnlineBankingSystem.war
+
+```
+
+
+
+
+
+### 3. Database Setup
+
+Before initializing the database, configure the database connection according to your environment.
+
+
+### Database Configuration
+
+
+**Using default XAMPP MySQL?**
+
+No environment variables are required.
+
+The application will automatically use the default local configuration:
+
+```
+URL: jdbc:mysql://localhost:3306/dks_banking
+Username: root
+Password: empty
+```
+
+
+**Using Custom MySQL / TiDB or Aiven Cloud?**
+
+Set the following environment variables before running the database setup:
+
+```powershell
+$env:DB_URL="your_database_url"
+
+$env:DB_USERNAME="your_username"
+
+$env:DB_PASSWORD="your_password"
+```
+
+
+After configuring the database connection, initialize the database:
+
+```bash
+mvn exec:java
+```
+
+
+This runs:
+
+```
+com.bank.setup.DatabaseSetup
+```
+
+
+The setup program will:
+
+- Create the database schema
+- Create required tables:
+  - users
+  - accounts
+  - transactions
+  - audit_logs
+- Ask for initial admin details through the terminal
+- Insert the first admin account details
+
+
+After successful database initialization, run the application using **Apache Tomcat 10.1**.
+
+
+
+## 🔑 Environment Variables
+
+| Variable | Purpose | Example |
+|---|---|---|
+| `DB_URL` | JDBC connection string | `jdbc:mysql://host:4000/banking_db?sslMode=VERIFY_IDENTITY` |
+| `DB_USERNAME` | Database username | `your_db_user` |
+| `DB_PASSWORD` | Database password | `••••••••` |
+
+
+None of these have hardcoded fallbacks pointing at a real database in production — local development only falls back to a plain `localhost` MySQL default so the app can still boot without any configuration during early development.
 
 ---
 
-## 🧪 Security & Boundary Testing Implemented
+## 📁 Project Structure
 
-* **SQL Injection Prevention:** All database queries utilize Java `PreparedStatement` to parameterize inputs and block injection vectors.
-* **Concurrency Handling:** Implemented database-level `try-with-resources` and mutex locking to prevent race conditions during simultaneous fund transfers.
-* **XSS Filtering:** A custom `safe()` script function on JSP views dynamically escapes special characters (e.g., `<`, `>`, `&`) before rendering user inputs.
-
----
-
-## 👥 Contributors
-
-* **DIPANKAR SUTRADHAR** - B.Tech CSE, LTSU
-* **ANKUSH** - B.Tech CSE, LTSU
-* **ARUN SINGH TOMAR** - B.Tech CSE, LTSU
-* **MITHLESH KUMAR** - B.Tech CSE, LTSU
-
-**Under the Guidance of:** Prof. Digvijay Puri (L&T Technical Trainer),
-                           Prof. Kanchan Sharma (Cordinator,LTSU), and
-                           Prof. Gagandeep Kaur (Subject Teacher, LTSU)
+```
+Banking_Management_System/
+├── src/main/java/com/bank/
+│   ├── controller/     → Servlets (routes/actions)
+│   ├── dao/             → Data access (JDBC)
+│   ├── model/            → Data classes
+│   ├── util/              → DBConnection, AdminAuth
+│   └── setup/             → DatabaseSetup (database initialization & admin setup)
+└── src/main/webapp/
+    ├── *.jsp             → Views
+    ├── css/               → Stylesheets
+    └── WEB-INF/            → web.xml, shared nav
+```
 
 ---
-*Made with ❤️ using Java, JSP, Servlets, JDBC, Maven & MySQL.*
+
+## 👨‍💻 Developer
+
+**Dipankar Sutradhar**
+[GitHub](https://github.com/jeetsutradhar009)
+
+⭐ Star the repository if you found it useful.
