@@ -244,7 +244,69 @@ The setup program will:
 - Insert the first admin account details
 
 
+---
+
+### Database Setup Fallback (Optional)
+
+Normally, the database is initialized automatically using:
+
+```bash
+mvn exec:java
+```
+However, if `DatabaseSetup.java` fails due to any reason such as:
+
+- JDBC driver issue
+- Incorrect environment variable configuration
+- Database connection problem
+- Other setup errors
+
+you can manually initialize the database using:
+
+```text
+database_setup.sql
+```
+
+
+### Manual SQL Setup Steps
+
+1. Open:
+
+```text
+database_setup.sql
+```
+
+in any MySQL-compatible SQL editor:
+
+- TiDB Cloud SQL Editor
+- MySQL Workbench
+- phpMyAdmin (XAMPP)
+
+
+2. Run the complete SQL file from top to bottom.
+
+
+It will create:
+
+- Database schema
+- Required tables
+- Schema migrations
+
+
+### Admin Account Note
+
+The SQL fallback file does not automatically create an admin account.
+
+
+If you use only the SQL setup, manually insert the admin record using the commented template provided at the bottom of:
+
+```text
+database_setup.sql
+```
+
+
 After successful database initialization, run the application using **Apache Tomcat 10.1**.
+
+---
 
 
 
