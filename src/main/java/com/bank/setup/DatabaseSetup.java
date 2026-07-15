@@ -142,54 +142,14 @@ public class DatabaseSetup {
                     )
                     """;
 
-            String otpVerificationsTable = """
-                    CREATE TABLE IF NOT EXISTS otp_verifications (
-                        otp_id INT AUTO_INCREMENT PRIMARY KEY,
-                        verification_token VARCHAR(64) UNIQUE NOT NULL,
-                        purpose VARCHAR(30) DEFAULT 'ACCOUNT_OPENING',
-                        first_name VARCHAR(100),
-                        last_name VARCHAR(100),
-                        dob DATE,
-                        address VARCHAR(500),
-                        email VARCHAR(100) NOT NULL,
-                        phone VARCHAR(20),
-                        account_type VARCHAR(50),
-                        initial_deposit DECIMAL(15, 2),
-                        otp_hash VARCHAR(64) NOT NULL,
-                        attempts INT DEFAULT 0,
-                        max_attempts INT DEFAULT 5,
-                        status VARCHAR(20) DEFAULT 'PENDING',
-                        email_verified BOOLEAN DEFAULT FALSE,
-                        expires_at TIMESTAMP NOT NULL,
-                        last_sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        verified_at TIMESTAMP NULL
-                    )
-                    """;
-
-            String passwordResetTokensTable = """
-                    CREATE TABLE IF NOT EXISTS password_reset_tokens (
-                        id INT AUTO_INCREMENT PRIMARY KEY,
-                        user_email VARCHAR(100) NOT NULL,
-                        reset_token VARCHAR(64) COLLATE utf8mb4_bin UNIQUE NOT NULL,
-                        expires_at TIMESTAMP NOT NULL,
-                        used BOOLEAN DEFAULT FALSE,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                    )
-                    """;
-
             stmt.executeUpdate(usersTable);
             stmt.executeUpdate(accountsTable);
             stmt.executeUpdate(transactionsTable);
             stmt.executeUpdate(auditLogsTable);
-            stmt.executeUpdate(otpVerificationsTable);
-            stmt.executeUpdate(passwordResetTokensTable);
 
             migrateUsersTable(con, stmt);
             migrateAccountsTable(con, stmt);
             migrateAuditLogsTable(con, stmt);
-            migrateOtpVerificationsTable(con, stmt);
-            migratePasswordResetTokensTable(con, stmt);
 
             stmt.close();
             con.close();
@@ -310,78 +270,6 @@ public class DatabaseSetup {
 
             addColumnIfMissing(con, stmt, "audit_logs", "created_at",
                     "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP AFTER description");
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private static void migrateOtpVerificationsTable(Connection con, Statement stmt) {
-        try {
-            addColumnIfMissing(con, stmt, "otp_verifications", "purpose",
-                    "purpose VARCHAR(30) DEFAULT 'ACCOUNT_OPENING' AFTER verification_token");
-
-            addColumnIfMissing(con, stmt, "otp_verifications", "attempts",
-                    "attempts INT DEFAULT 0 AFTER otp_hash");
-
-            addColumnIfMissing(con, stmt, "otp_verifications", "max_attempts",
-                    "max_attempts INT DEFAULT 5 AFTER attempts");
-
-            addColumnIfMissing(con, stmt, "otp_verifications", "status",
-                    "status VARCHAR(20) DEFAULT 'PENDING' AFTER max_attempts");
-
-            addColumnIfMissing(con, stmt, "otp_verifications", "email_verified",
-                    "email_verified BOOLEAN DEFAULT FALSE AFTER status");
-
-            addColumnIfMissing(con, stmt, "otp_verifications", "last_sent_at",
-                    "last_sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP AFTER expires_at");
-
-            addColumnIfMissing(con, stmt, "otp_verifications", "verified_at",
-                    "verified_at TIMESTAMP NULL AFTER created_at");
-
-            stmt.executeUpdate("""
-                    UPDATE otp_verifications
-                    SET status = 'PENDING'
-                    WHERE status IS NULL OR status = ''
-                    """);
-
-            stmt.executeUpdate("""
-                    UPDATE otp_verifications
-                    SET email_verified = FALSE
-                    WHERE email_verified IS NULL
-                    """);
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    private static void migratePasswordResetTokensTable(Connection con, Statement stmt) {
-        try {
-            addColumnIfMissing(con, stmt, "password_reset_tokens", "expires_at",
-                    "expires_at TIMESTAMP NOT NULL AFTER reset_token");
-
-            addColumnIfMissing(con, stmt, "password_reset_tokens", "used",
-                    "used BOOLEAN DEFAULT FALSE AFTER expires_at");
-
-            addColumnIfMissing(con, stmt, "password_reset_tokens", "created_at",
-                    "created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP AFTER used");
-
-            // Ensures reset_token comparisons/uniqueness are
-            // case-sensitive (a case-insensitive collation would
-            // otherwise let two tokens differing only by letter case
-            // be treated as equal, silently narrowing the token's
-            // effective entropy). Safe to re-run on every setup.
-            stmt.executeUpdate("""
-                    ALTER TABLE password_reset_tokens
-                    MODIFY COLUMN reset_token VARCHAR(64) COLLATE utf8mb4_bin UNIQUE NOT NULL
-                    """);
-
-            stmt.executeUpdate("""
-                    UPDATE password_reset_tokens
-                    SET used = FALSE
-                    WHERE used IS NULL
-                    """);
 
         } catch (Exception e) {
             e.printStackTrace();
