@@ -13271,7 +13271,7 @@ th {
     width: 100%;
     table-layout: fixed;
     border-collapse: collapse;
-    min-width: 1000px;
+    min-width: 1400px;
 }
 
 .audit-table th,
@@ -13283,10 +13283,10 @@ th {
 
 .audit-table thead th {
     background: linear-gradient(180deg, #f8fbff, #f2f6fa);
-    color: #334155;
+    color: #063f2b;
     padding: 18px 14px;
     text-align: left;
-    font-size: 13px;
+    font-size: 14.5px;
     font-weight: 900;
 }
 
@@ -13307,29 +13307,41 @@ th {
     font-weight: 800;
 }
 
+/* Column order: ID, Performed By, Role, Action, Status, Description, Date/Time */
+
 .audit-table th:nth-child(1),
 .audit-table td:nth-child(1) {
-    width: 10%;
+    width: 6%;
 }
 
 .audit-table th:nth-child(2),
 .audit-table td:nth-child(2) {
-    width: 19%;
+    width: 16%;
 }
 
 .audit-table th:nth-child(3),
 .audit-table td:nth-child(3) {
-    width: 38%;
+    width: 8%;
 }
 
 .audit-table th:nth-child(4),
 .audit-table td:nth-child(4) {
-    width: 13%;
+    width: 12%;
 }
 
 .audit-table th:nth-child(5),
 .audit-table td:nth-child(5) {
-    width: 20%;
+    width: 10%;
+}
+
+.audit-table th:nth-child(6),
+.audit-table td:nth-child(6) {
+    width: 30%;
+}
+
+.audit-table th:nth-child(7),
+.audit-table td:nth-child(7) {
+    width: 18%;
 }
 
 .audit-id {
@@ -17188,4 +17200,25 @@ th {
         opacity: 1;
         transform: translateY(0); /* Apni original position pe aayega */
     }
+}
+
+/* ===== Audit Logs table — align cell content under its column header ===== */
+/* Badges/pills (Role, Status, Action) carry their own internal padding on
+   top of the cell's padding, which was pushing their text further right
+   than the plain header text above it. Pulling them back a little with a
+   negative margin fixes the visual misalignment without touching the
+   badge's own padding/shape/colors. */
+.audit-table tbody td {
+    padding-left: 10px;
+}
+
+.audit-table td .badge,
+.audit-table td .audit-action-badge {
+    margin-left: -6px;
+}
+
+/* ===== Audit Logs search box — green border + soft glow on click/focus ===== */
+.audit-search-box:focus-within {
+    border-color: #009879;
+    box-shadow: 0 0 0 3px rgba(0, 152, 121, 0.15);
 }

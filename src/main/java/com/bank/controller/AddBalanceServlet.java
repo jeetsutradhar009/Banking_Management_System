@@ -1,6 +1,7 @@
 package com.bank.controller;
 
 import com.bank.dao.AdminDAO;
+import com.bank.model.User;
 import com.bank.util.AdminAuth;
 
 import java.io.IOException;
@@ -13,6 +14,7 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 
 @WebServlet("/admin/add-balance")
 public class AddBalanceServlet extends HttpServlet {
@@ -61,7 +63,10 @@ public class AddBalanceServlet extends HttpServlet {
                 throw new Exception("Amount must be greater than 0");
             }
 
-            adminDAO.addBalance(accountNumber, amount, note);
+            HttpSession session = request.getSession(false);
+            User actor = session != null ? (User) session.getAttribute("user") : null;
+
+            adminDAO.addBalance(actor, accountNumber, amount, note);
 
             response.sendRedirect(request.getContextPath()
                     + "/admin/add-balance?accountNo=" + accountNumber

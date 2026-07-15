@@ -2,6 +2,7 @@ package com.bank.controller;
 
 import com.bank.dao.UserDAO;
 import com.bank.model.RegistrationInfo;
+import com.bank.util.AuditLogger;
 
 import java.io.IOException;
 
@@ -79,6 +80,9 @@ public class RegisterServlet extends HttpServlet {
         boolean registered = userDAO.activateOnlineBanking(customerId, password);
 
         if (registered) {
+            AuditLogger.logByIdentifier(customerId, info.getFullName(),
+                    "REGISTER_ONLINE_BANKING", "Customer ID " + customerId + " activated online banking");
+
             response.sendRedirect(request.getContextPath() + "/login.jsp?success=Registration%20completed.%20Login%20with%20Customer%20ID.");
         } else {
             request.setAttribute("error", "Registration failed. Please try again.");

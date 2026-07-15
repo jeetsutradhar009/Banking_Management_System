@@ -1,7 +1,9 @@
 package com.bank.controller;
 
+import com.bank.dao.OtpDAO;
 import com.bank.dao.UserDAO;
 import com.bank.model.AccountOpenResult;
+import com.bank.util.AuditLogger;
 
 import java.io.IOException;
 
@@ -16,7 +18,8 @@ public class OpenAccountServlet extends HttpServlet {
 
     private static final long serialVersionUID = 1L;
 
-    private UserDAO userDAO = new UserDAO();
+    private final OtpDAO otpDAO = new OtpDAO();
+    private final UserDAO userDAO = new UserDAO();
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
@@ -38,6 +41,7 @@ public class OpenAccountServlet extends HttpServlet {
         String phone = request.getParameter("phone");
         String accountType = request.getParameter("accountType");
         String initialDepositStr = request.getParameter("initialDeposit");
+        String verificationToken = request.getParameter("verificationToken");
 
         try {
             if (isEmpty(firstName) || isEmpty(lastName) || isEmpty(dob)
@@ -63,15 +67,26 @@ public class OpenAccountServlet extends HttpServlet {
                 return;
             }
 
+            // ------------------------------------------------------------
+            // Email verification gate:
+            // The email is verified separately and BEFORE this form is
+            // submitted, via the inline popup on openAccount.jsp
+            // (SendEmailVerificationServlet -> VerifyEmailOtpServlet).
+            // This servlet only re-checks, server-side, that the
+            // verificationToken submitted with the form corresponds to
+            // a record where this exact email was already verified -
+            // this cannot be bypassed by tampering with a hidden field
+            // in dev tools, since isEmailVerified() re-queries the DB.
+            // ------------------------------------------------------------
+
+            if (isEmpty(verificationToken) || !otpDAO.isEmailVerified(verificationToken.trim(), email.trim())) {
+                request.setAttribute("error", "Please verify your email before creating an account.");
+                request.getRequestDispatcher("openAccount.jsp").forward(request, response);
+                return;
+            }
+
             AccountOpenResult result = userDAO.openBankAccount(
-                    firstName,
-                    lastName,
-                    dob,
-                    address,
-                    email,
-                    phone,
-                    accountType,
-                    initialDeposit
+                    firstName, lastName, dob, address, email, phone, accountType, initialDeposit
             );
 
             if (result.isSuccess()) {
@@ -79,6 +94,10 @@ public class OpenAccountServlet extends HttpServlet {
                 request.setAttribute("customerId", result.getCustomerId());
                 request.setAttribute("accountNumber", result.getAccountNumber());
                 request.setAttribute("ifscCode", result.getIfscCode());
+
+                AuditLogger.logByIdentifier(result.getCustomerId(), firstName + " " + lastName,
+                        "OPEN_ACCOUNT", "New account opened: " + result.getAccountNumber()
+                                + " (Customer ID " + result.getCustomerId() + ")");
             } else {
                 request.setAttribute("error", result.getMessage());
             }
@@ -87,6 +106,11 @@ public class OpenAccountServlet extends HttpServlet {
 
         } catch (NumberFormatException e) {
             request.setAttribute("error", "Invalid initial deposit amount.");
+            request.getRequestDispatcher("openAccount.jsp").forward(request, response);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            request.setAttribute("error", "Something went wrong while creating the account. Please check your details and try again.");
             request.getRequestDispatcher("openAccount.jsp").forward(request, response);
         }
     }

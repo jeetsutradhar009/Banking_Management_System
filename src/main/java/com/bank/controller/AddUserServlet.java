@@ -1,6 +1,7 @@
 package com.bank.controller;
 
 import com.bank.dao.AdminDAO;
+import com.bank.model.User;
 import com.bank.util.AdminAuth;
 
 import java.io.IOException;
@@ -12,6 +13,7 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 
 @WebServlet("/admin/add-user")
 public class AddUserServlet extends HttpServlet {
@@ -42,8 +44,11 @@ public class AddUserServlet extends HttpServlet {
         String password = request.getParameter("password");
         String role = request.getParameter("role");
 
+        HttpSession session = request.getSession(false);
+        User actor = session != null ? (User) session.getAttribute("user") : null;
+
         try {
-            adminDAO.addUser(fullName, email, phone, password, role);
+            adminDAO.addUser(actor, fullName, email, phone, password, role);
             redirect(response, request, "User added successfully", null);
         } catch (Exception e) {
             redirect(response, request, null, e.getMessage());

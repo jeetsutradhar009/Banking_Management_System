@@ -4,6 +4,7 @@ import com.bank.model.AccountOpenResult;
 import com.bank.model.RegistrationInfo;
 import com.bank.model.User;
 import com.bank.util.DBConnection;
+import com.bank.util.PasswordUtil;
 
 import java.security.SecureRandom;
 import java.sql.Connection;
@@ -267,6 +268,43 @@ public class UserDAO {
             ps.setString(1, newPassword.trim());
             ps.setInt(2, userId);
             ps.setString(3, currentPassword.trim());
+
+            success = ps.executeUpdate() > 0;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return success;
+    }
+
+    /**
+     * Updates the password for the user matching the given email, used
+     * by the Forgot Password flow (ResetPasswordServlet) where the
+     * customer does not know their current password, so it cannot be
+     * verified the way changePassword() does.
+     *
+     * Stores the password using the same plain storage format the rest
+     * of the project currently uses (see activateOnlineBanking() /
+     * changePassword() / loginUser()) so login keeps working unchanged.
+     * The actual write goes through PasswordUtil.process(), so
+     * switching to real hashing later only requires changing that one
+     * method, not this query.
+     */
+    public boolean resetPassword(String email, String newPassword) {
+        boolean success = false;
+
+        String sql = """
+                UPDATE users
+                SET password = ?
+                WHERE LOWER(TRIM(email)) = LOWER(?)
+                """;
+
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setString(1, PasswordUtil.process(newPassword.trim()));
+            ps.setString(2, email.trim());
 
             success = ps.executeUpdate() > 0;
 

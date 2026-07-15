@@ -1,0 +1,44 @@
+# ============================================================
+# email.properties.example
+#
+# Template for local SMTP configuration used by EmailService.java
+# (Account Opening OTP emails).
+#
+# HOW TO USE:
+#   1. Copy this file to "email.properties" in the same folder
+#      (src/main/resources/email.properties).
+#   2. Fill in your real SMTP values in that copy.
+#   3. NEVER commit the real "email.properties" file - it is
+#      already excluded via .gitignore.
+#
+# CONFIG PRIORITY (see EmailService.java):
+#   1. Environment variables (used in production / Render) - if
+#      SMTP_HOST, SMTP_PORT, SMTP_USERNAME, SMTP_PASSWORD and
+#      SMTP_FROM_EMAIL are all set as environment variables, this
+#      file is not read at all.
+#   2. This properties file (local development fallback only).
+#
+# Gmail users: SMTP_PASSWORD must be a 16-character Gmail "App
+# Password" (Google Account -> Security -> App Passwords), not
+# your normal Gmail login password. Gmail requires STARTTLS on
+# port 587, which is what EmailService.java already assumes.
+# ============================================================
+
+# SMTP server host
+SMTP_HOST=smtp.gmail.com
+
+# SMTP server port (587 = STARTTLS, used by EmailService.java)
+SMTP_PORT=587
+
+# SMTP login username (usually your full email address)
+SMTP_USERNAME=your_bank_email@gmail.com
+
+# SMTP login password / app password - NEVER a real value in this
+# example file
+SMTP_PASSWORD=your_app_password_here
+
+# "From" email address shown to the customer
+SMTP_FROM_EMAIL=your_bank_email@gmail.com
+
+# "From" display name shown to the customer
+SMTP_FROM_NAME=DKS Bank

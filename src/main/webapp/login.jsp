@@ -28,6 +28,8 @@
     <title>Login - DKS Bank</title>
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+     <link rel="icon" type="image/png" href="images/logo.png">
 
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/oldStyle.css?v=116">
 
@@ -193,6 +195,13 @@
                             <i class="bi bi-eye" id="passwordEye"></i>
                         </button>
                     </div>
+                </div>
+
+                <div class="auth-bottom-links">
+                    <a href="${pageContext.request.contextPath}/forgot-password">
+                        <i class="bi bi-question-circle"></i>
+                        Forgot Password?
+                    </a>
                 </div>
 
                 <button type="submit" class="auth-submit-btn" id="loginSubmitBtn">

@@ -20,6 +20,8 @@
 <head>
     <meta charset="UTF-8">
     <title>User Management - DKS Bank</title>
+    
+    <link rel="icon" type="image/png" href="images/logo.png">
 
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/style.css?v=204">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">

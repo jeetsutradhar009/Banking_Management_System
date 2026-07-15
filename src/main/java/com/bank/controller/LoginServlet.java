@@ -2,6 +2,7 @@ package com.bank.controller;
 
 import com.bank.dao.UserDAO;
 import com.bank.model.User;
+import com.bank.util.AuditLogger;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -74,6 +75,8 @@ public class LoginServlet extends HttpServlet {
             HttpSession session = request.getSession();
             session.setAttribute("user", user);
 
+            AuditLogger.log(user, "LOGIN", "Admin logged in");
+
             response.sendRedirect(request.getContextPath() + "/admin");
             return;
         }
@@ -87,6 +90,8 @@ public class LoginServlet extends HttpServlet {
 
         HttpSession session = request.getSession();
         session.setAttribute("user", user);
+
+        AuditLogger.log(user, "LOGIN", "User logged in");
 
         response.sendRedirect(request.getContextPath() + "/dashboard");
     }

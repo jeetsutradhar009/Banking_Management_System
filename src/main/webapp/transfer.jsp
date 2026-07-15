@@ -63,6 +63,8 @@
 <head>
     <meta charset="UTF-8">
     <title>Fund Transfer - DKS Bank</title>
+    
+    <link rel="icon" type="image/png" href="images/logo.png">
 
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/style.css?v=204">
 
