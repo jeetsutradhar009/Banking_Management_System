@@ -100,7 +100,7 @@
     <meta charset="UTF-8">
     <title>Audit Logs - DKS Bank</title>
     
-    <link rel="icon" type="image/png" href="images/logo.png">
+    <link rel="icon" type="image/png" href="${pageContext.request.contextPath}/images/logo.png">
 
     <!-- Bootstrap 5 (badges only — loaded first so oldStyle.css below still controls the rest of the page) -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">

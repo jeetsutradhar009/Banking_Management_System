@@ -26,10 +26,12 @@
 <head>
     <meta charset="UTF-8">
     <title>Login - DKS Bank</title>
+    
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
-     <link rel="icon" type="image/png" href="images/logo.png">
+    <link rel="icon" type="image/png" href="${pageContext.request.contextPath}/images/logo.png">
+    
 
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/oldStyle.css?v=116">
 

@@ -22,7 +22,7 @@
     <meta charset="UTF-8">
     <title>Create Account - DKS Bank</title>
     
-    <link rel="icon" type="image/png" href="images/logo.png">
+    <link rel="icon" type="image/png" href="${pageContext.request.contextPath}/images/logo.png">
 
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/oldStyle.css?v=211">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
