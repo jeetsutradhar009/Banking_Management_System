@@ -1,98 +1,79 @@
 package com.bank.util;
 
-import jakarta.mail.Authenticator;
-import jakarta.mail.Message;
-import jakarta.mail.MessagingException;
-import jakarta.mail.PasswordAuthentication;
-import jakarta.mail.Session;
-import jakarta.mail.Transport;
-import jakarta.mail.internet.InternetAddress;
-import jakarta.mail.internet.MimeMessage;
-
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.Properties;
 
+/**
+ * Sends transactional emails via Brevo's HTTPS Transactional Email API
+ * (https://api.brevo.com/v3/smtp/email) instead of raw SMTP.
+ *
+ * This class used to connect directly to an SMTP server (e.g.
+ * smtp.gmail.com:587) using Jakarta Mail. That stopped working once the
+ * app was deployed on Render's free tier, because Render blocks outbound
+ * traffic to SMTP ports (25, 465, 587) on free web services - see
+ * https://render.com/changelog/free-web-services-will-no-longer-allow-outbound-traffic-to-smtp-ports
+ *
+ * Brevo's API is a plain HTTPS POST on port 443, which free tiers do not
+ * block, so this works from Render's free plan without any upgrade.
+ * Brevo also does not require owning/verifying a custom domain - a single
+ * verified sender email (e.g. an existing Gmail address) is enough to
+ * send to ANY recipient, unlike some other providers' sandbox mode.
+ */
 public class EmailService {
 
     private static final String PROPERTIES_FILE = "email.properties";
+    private static final String BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
 
-    private final String smtpHost;
-    private final String smtpPort;
-    private final String smtpUsername;
-    private final String smtpPassword;
+    private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10))
+            .build();
+
+    private final String brevoApiKey;
     private final String fromEmail;
     private final String fromName;
 
     public EmailService() {
         Properties fallback = loadFallbackProperties();
 
-        this.smtpHost = resolve("SMTP_HOST", fallback);
-        this.smtpPort = resolve("SMTP_PORT", fallback);
-        this.smtpUsername = resolve("SMTP_USERNAME", fallback);
-        this.smtpPassword = resolve("SMTP_PASSWORD", fallback);
-        this.fromEmail = resolve("SMTP_FROM_EMAIL", fallback);
-        this.fromName = resolve("SMTP_FROM_NAME", fallback);
+        this.brevoApiKey = resolve("BREVO_API_KEY", fallback);
+        this.fromEmail = resolve("EMAIL_FROM_ADDRESS", fallback);
+        this.fromName = resolve("EMAIL_FROM_NAME", fallback);
     }
 
     public EmailResult sendOtpEmail(String toEmail, String fullName, String otpCode, int validityMinutes) {
 
-        if (isBlank(smtpHost) || isBlank(smtpPort) || isBlank(smtpUsername)
-                || isBlank(smtpPassword) || isBlank(fromEmail)) {
-
+        if (isBlank(brevoApiKey) || isBlank(fromEmail)) {
             return EmailResult.failure(
-                    "Email service is not configured. Please set SMTP_HOST, SMTP_PORT, "
-                    + "SMTP_USERNAME, SMTP_PASSWORD and SMTP_FROM_EMAIL (environment variables "
-                    + "or email.properties).");
+                    "Email service is not configured. Please set BREVO_API_KEY and EMAIL_FROM_ADDRESS "
+                    + "(environment variables or email.properties).");
         }
 
-        try {
-            Session session = buildSession();
-
-            MimeMessage message = new MimeMessage(session);
-            message.setFrom(new InternetAddress(fromEmail, isBlank(fromName) ? "DKS Bank" : fromName));
-            message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(toEmail));
-            message.setSubject("DKS Bank - Your Account Opening OTP");
-            message.setText(buildOtpEmailBody(fullName, otpCode, validityMinutes));
-
-            Transport.send(message);
-
-            return EmailResult.success();
-
-        } catch (MessagingException | java.io.UnsupportedEncodingException e) {
-            e.printStackTrace();
-            return EmailResult.failure("Unable to send OTP email. Please try again in a moment.");
-        }
+        return sendViaBrevo(toEmail, fullName,
+                "DKS Bank - Your Account Opening OTP",
+                buildOtpEmailBody(fullName, otpCode, validityMinutes),
+                null,
+                "Unable to send OTP email. Please try again in a moment.");
     }
 
     public EmailResult sendPasswordResetEmail(String toEmail, String fullName, String resetLink) {
 
-        if (isBlank(smtpHost) || isBlank(smtpPort) || isBlank(smtpUsername)
-                || isBlank(smtpPassword) || isBlank(fromEmail)) {
-
+        if (isBlank(brevoApiKey) || isBlank(fromEmail)) {
             return EmailResult.failure(
-                    "Email service is not configured. Please set SMTP_HOST, SMTP_PORT, "
-                    + "SMTP_USERNAME, SMTP_PASSWORD and SMTP_FROM_EMAIL (environment variables "
-                    + "or email.properties).");
+                    "Email service is not configured. Please set BREVO_API_KEY and EMAIL_FROM_ADDRESS "
+                    + "(environment variables or email.properties).");
         }
 
-        try {
-            Session session = buildSession();
-
-            MimeMessage message = new MimeMessage(session);
-            message.setFrom(new InternetAddress(fromEmail, isBlank(fromName) ? "DKS Bank" : fromName));
-            message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(toEmail));
-            message.setSubject("DKS Bank - Password Reset Request");
-            message.setText(buildPasswordResetEmailBody(fullName, resetLink));
-
-            Transport.send(message);
-
-            return EmailResult.success();
-
-        } catch (MessagingException | java.io.UnsupportedEncodingException e) {
-            e.printStackTrace();
-            return EmailResult.failure("Unable to send password reset email. Please try again in a moment.");
-        }
+        return sendViaBrevo(toEmail, fullName,
+                "DKS Bank - Password Reset Request",
+                buildPasswordResetEmailBody(fullName, resetLink),
+                null,
+                "Unable to send password reset email. Please try again in a moment.");
     }
 
     /**
@@ -124,35 +105,17 @@ public class EmailService {
                                                 String ifscCode,
                                                 String registrationUrl) {
 
-        if (isBlank(smtpHost) || isBlank(smtpPort) || isBlank(smtpUsername)
-                || isBlank(smtpPassword) || isBlank(fromEmail)) {
-
+        if (isBlank(brevoApiKey) || isBlank(fromEmail)) {
             return EmailResult.failure(
-                    "Email service is not configured. Please set SMTP_HOST, SMTP_PORT, "
-                    + "SMTP_USERNAME, SMTP_PASSWORD and SMTP_FROM_EMAIL (environment variables "
-                    + "or email.properties).");
+                    "Email service is not configured. Please set BREVO_API_KEY and EMAIL_FROM_ADDRESS "
+                    + "(environment variables or email.properties).");
         }
 
-        try {
-            Session session = buildSession();
-
-            MimeMessage message = new MimeMessage(session);
-            message.setFrom(new InternetAddress(fromEmail, isBlank(fromName) ? "DKS Bank" : fromName));
-            message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(toEmail));
-            message.setSubject("DKS Bank - Your New Account Details");
-            message.setContent(
-                    buildAccountDetailsEmailHtml(fullName, customerId, accountNumber, ifscCode, registrationUrl),
-                    "text/html; charset=UTF-8"
-            );
-
-            Transport.send(message);
-
-            return EmailResult.success();
-
-        } catch (MessagingException | java.io.UnsupportedEncodingException e) {
-            e.printStackTrace();
-            return EmailResult.failure("Unable to send account details email. Please try again in a moment.");
-        }
+        return sendViaBrevo(toEmail, fullName,
+                "DKS Bank - Your New Account Details",
+                null,
+                buildAccountDetailsEmailHtml(fullName, customerId, accountNumber, ifscCode, registrationUrl),
+                "Unable to send account details email. Please try again in a moment.");
     }
 
     /**
@@ -178,51 +141,117 @@ public class EmailService {
                                                         String temporaryPassword,
                                                         String loginUrl) {
 
-        if (isBlank(smtpHost) || isBlank(smtpPort) || isBlank(smtpUsername)
-                || isBlank(smtpPassword) || isBlank(fromEmail)) {
-
+        if (isBlank(brevoApiKey) || isBlank(fromEmail)) {
             return EmailResult.failure(
-                    "Email service is not configured. Please set SMTP_HOST, SMTP_PORT, "
-                    + "SMTP_USERNAME, SMTP_PASSWORD and SMTP_FROM_EMAIL (environment variables "
-                    + "or email.properties).");
+                    "Email service is not configured. Please set BREVO_API_KEY and EMAIL_FROM_ADDRESS "
+                    + "(environment variables or email.properties).");
         }
 
+        return sendViaBrevo(toEmail, fullName,
+                "DKS Bank - Online Banking Activated",
+                null,
+                buildOnlineBankingActivatedEmailHtml(fullName, customerId, temporaryPassword, loginUrl),
+                "Unable to send activation email. Please try again in a moment.");
+    }
+
+    /**
+     * Posts a single transactional email to Brevo's API. Exactly one of
+     * textBody/htmlBody should be non-null - the other stays null.
+     */
+    private EmailResult sendViaBrevo(String toEmail,
+                                      String toName,
+                                      String subject,
+                                      String textBody,
+                                      String htmlBody,
+                                      String failureMessage) {
         try {
-            Session session = buildSession();
+            String requestJson = buildBrevoRequestJson(toEmail, toName, subject, textBody, htmlBody);
 
-            MimeMessage message = new MimeMessage(session);
-            message.setFrom(new InternetAddress(fromEmail, isBlank(fromName) ? "DKS Bank" : fromName));
-            message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(toEmail));
-            message.setSubject("DKS Bank - Online Banking Activated");
-            message.setContent(
-                    buildOnlineBankingActivatedEmailHtml(fullName, customerId, temporaryPassword, loginUrl),
-                    "text/html; charset=UTF-8"
-            );
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(BREVO_API_URL))
+                    .timeout(Duration.ofSeconds(15))
+                    .header("api-key", brevoApiKey)
+                    .header("Content-Type", "application/json")
+                    .header("Accept", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(requestJson))
+                    .build();
 
-            Transport.send(message);
+            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
 
-            return EmailResult.success();
+            if (response.statusCode() >= 200 && response.statusCode() < 300) {
+                return EmailResult.success();
+            }
 
-        } catch (MessagingException | java.io.UnsupportedEncodingException e) {
+            // Brevo's error responses are JSON like {"code":"...","message":"..."} -
+            // logged server-side only, never shown to the end user.
+            System.err.println("Brevo API request failed (HTTP " + response.statusCode() + "): " + response.body());
+            return EmailResult.failure(failureMessage);
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             e.printStackTrace();
-            return EmailResult.failure("Unable to send activation email. Please try again in a moment.");
+            return EmailResult.failure(failureMessage);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return EmailResult.failure(failureMessage);
         }
     }
 
-    private Session buildSession() {
-        Properties props = new Properties();
-        props.put("mail.smtp.auth", "true");
-        props.put("mail.smtp.starttls.enable", "true");
-        props.put("mail.smtp.host", smtpHost);
-        props.put("mail.smtp.port", smtpPort);
-        props.put("mail.smtp.ssl.trust", smtpHost);
+    private String buildBrevoRequestJson(String toEmail,
+                                          String toName,
+                                          String subject,
+                                          String textBody,
+                                          String htmlBody) {
+        StringBuilder json = new StringBuilder();
+        json.append("{");
 
-        return Session.getInstance(props, new Authenticator() {
-            @Override
-            protected PasswordAuthentication getPasswordAuthentication() {
-                return new PasswordAuthentication(smtpUsername, smtpPassword);
+        json.append("\"sender\":{\"name\":\"")
+                .append(jsonEscape(isBlank(fromName) ? "DKS Bank" : fromName))
+                .append("\",\"email\":\"")
+                .append(jsonEscape(fromEmail))
+                .append("\"},");
+
+        json.append("\"to\":[{\"email\":\"").append(jsonEscape(toEmail)).append("\"");
+        if (!isBlank(toName)) {
+            json.append(",\"name\":\"").append(jsonEscape(toName)).append("\"");
+        }
+        json.append("}],");
+
+        json.append("\"subject\":\"").append(jsonEscape(subject)).append("\"");
+
+        if (htmlBody != null) {
+            json.append(",\"htmlContent\":\"").append(jsonEscape(htmlBody)).append("\"");
+        } else {
+            json.append(",\"textContent\":\"").append(jsonEscape(textBody)).append("\"");
+        }
+
+        json.append("}");
+        return json.toString();
+    }
+
+    private String jsonEscape(String value) {
+        if (value == null) {
+            return "";
+        }
+
+        StringBuilder sb = new StringBuilder(value.length());
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            switch (c) {
+                case '"':  sb.append("\\\""); break;
+                case '\\': sb.append("\\\\"); break;
+                case '\n': sb.append("\\n");  break;
+                case '\r': sb.append("\\r");  break;
+                case '\t': sb.append("\\t");  break;
+                default:
+                    if (c < 0x20) {
+                        sb.append(String.format("\\u%04x", (int) c));
+                    } else {
+                        sb.append(c);
+                    }
             }
-        });
+        }
+        return sb.toString();
     }
 
     private String buildOtpEmailBody(String fullName, String otpCode, int validityMinutes) {

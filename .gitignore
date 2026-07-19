@@ -1,6 +1,5 @@
-/target/
-# Local SMTP credentials for EmailService (never commit real values)
+.classpath
+.project
+.settings/
+target/
 src/main/resources/email.properties
-/.classpath/
-/.project/
-/.settings/
