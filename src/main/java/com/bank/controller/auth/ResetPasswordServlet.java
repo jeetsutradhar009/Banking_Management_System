@@ -20,6 +20,8 @@ public class ResetPasswordServlet extends HttpServlet {
 
     private static final long serialVersionUID = 1L;
 
+    private static final String VIEW = "/WEB-INF/views/auth/resetPassword.jsp";
+
     private static final String INVALID_LINK_MESSAGE = "Invalid or expired reset link.";
 
     private final PasswordResetDAO passwordResetDAO = new PasswordResetDAO();
@@ -39,7 +41,7 @@ public class ResetPasswordServlet extends HttpServlet {
 
         if (isEmpty(token) || passwordResetDAO.findValidToken(PasswordUtil.hashToken(token.trim())) == null) {
             request.setAttribute("error", INVALID_LINK_MESSAGE);
-            request.getRequestDispatcher("resetPassword.jsp").forward(request, response);
+            request.getRequestDispatcher(VIEW).forward(request, response);
             return;
         }
 
@@ -47,7 +49,7 @@ public class ResetPasswordServlet extends HttpServlet {
         // page - it is what the hidden form field must resubmit on
         // POST, since only the hash is ever stored in the database.
         request.setAttribute("token", token.trim());
-        request.getRequestDispatcher("resetPassword.jsp").forward(request, response);
+        request.getRequestDispatcher(VIEW).forward(request, response);
     }
 
     /**
@@ -70,7 +72,7 @@ public class ResetPasswordServlet extends HttpServlet {
         try {
             if (isEmpty(token)) {
                 request.setAttribute("error", INVALID_LINK_MESSAGE);
-                request.getRequestDispatcher("resetPassword.jsp").forward(request, response);
+                request.getRequestDispatcher(VIEW).forward(request, response);
                 return;
             }
 
@@ -82,14 +84,14 @@ public class ResetPasswordServlet extends HttpServlet {
 
             if (resetToken == null) {
                 request.setAttribute("error", INVALID_LINK_MESSAGE);
-                request.getRequestDispatcher("resetPassword.jsp").forward(request, response);
+                request.getRequestDispatcher(VIEW).forward(request, response);
                 return;
             }
 
             if (isEmpty(newPassword) || isEmpty(confirmPassword)) {
                 request.setAttribute("error", "Both password fields are required.");
                 request.setAttribute("token", token);
-                request.getRequestDispatcher("resetPassword.jsp").forward(request, response);
+                request.getRequestDispatcher(VIEW).forward(request, response);
                 return;
             }
 
@@ -101,14 +103,14 @@ public class ResetPasswordServlet extends HttpServlet {
             if (newPassword.length() < 6) {
                 request.setAttribute("error", "Password must be at least 6 characters.");
                 request.setAttribute("token", token);
-                request.getRequestDispatcher("resetPassword.jsp").forward(request, response);
+                request.getRequestDispatcher(VIEW).forward(request, response);
                 return;
             }
 
             if (!newPassword.equals(confirmPassword)) {
                 request.setAttribute("error", "Password and confirm password do not match.");
                 request.setAttribute("token", token);
-                request.getRequestDispatcher("resetPassword.jsp").forward(request, response);
+                request.getRequestDispatcher(VIEW).forward(request, response);
                 return;
             }
 
@@ -124,7 +126,7 @@ public class ResetPasswordServlet extends HttpServlet {
             if (!updated) {
                 request.setAttribute("error", "Unable to reset password right now. Please try again.");
                 request.setAttribute("token", token);
-                request.getRequestDispatcher("resetPassword.jsp").forward(request, response);
+                request.getRequestDispatcher(VIEW).forward(request, response);
                 return;
             }
 
@@ -140,12 +142,12 @@ public class ResetPasswordServlet extends HttpServlet {
                     "PASSWORD_RESET_COMPLETED", "Password reset completed successfully");
 
             response.sendRedirect(request.getContextPath()
-                    + "/login.jsp?success=Password%20updated%20successfully.%20Please%20login%20with%20your%20new%20password.");
+                    + "/login?success=Password%20updated%20successfully.%20Please%20login%20with%20your%20new%20password.");
 
         } catch (Exception e) {
             e.printStackTrace();
             request.setAttribute("error", "Something went wrong. Please try again.");
-            request.getRequestDispatcher("resetPassword.jsp").forward(request, response);
+            request.getRequestDispatcher(VIEW).forward(request, response);
         }
     }
 

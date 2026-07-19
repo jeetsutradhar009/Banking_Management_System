@@ -142,10 +142,38 @@ public class DatabaseSetup {
                     )
                     """;
 
+            // Backs the customer self-service "Open Account" UPI payment
+            // simulation ONLY (com.bank.controller.payment). Beyond the
+            // core payment fields, this also snapshots the pending
+            // registration (first/last name, dob, address, email, phone,
+            // account type) so the account can be created from any
+            // device once payment succeeds - e.g. the demo QR code being
+            // scanned on a phone, in a different browser session than
+            // the one that filled the account-opening form.
+            String paymentsTable = """
+                    CREATE TABLE IF NOT EXISTS payments (
+                        payment_id INT AUTO_INCREMENT PRIMARY KEY,
+                        request_id VARCHAR(36) UNIQUE NOT NULL,
+                        payment_method VARCHAR(30),
+                        amount DECIMAL(15, 2) NOT NULL,
+                        transaction_reference VARCHAR(50),
+                        status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+                        first_name VARCHAR(100),
+                        last_name VARCHAR(100),
+                        dob DATE,
+                        address VARCHAR(500),
+                        email VARCHAR(100),
+                        phone VARCHAR(20),
+                        account_type VARCHAR(50),
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """;
+
             stmt.executeUpdate(usersTable);
             stmt.executeUpdate(accountsTable);
             stmt.executeUpdate(transactionsTable);
             stmt.executeUpdate(auditLogsTable);
+            stmt.executeUpdate(paymentsTable);
 
             migrateUsersTable(con, stmt);
             migrateAccountsTable(con, stmt);

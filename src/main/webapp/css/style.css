@@ -6607,6 +6607,32 @@ a {
     background: #ea580c;
 }
 
+/* User Management page's Add User button - green theme, kept scoped
+   to this specific class so other admin pages' buttons (Accounts,
+   Transactions, Reports) keep their existing orange color. */
+.admin-add-user-link-btn {
+    border: none;
+    background: #16a34a;
+    color: #ffffff;
+    border-radius: 14px;
+    padding: 12px 18px;
+    font-family: inherit;
+    font-weight: 900;
+    font-size: 15px;
+    text-decoration: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 8px 18px rgba(22, 163, 74, 0.24);
+    transition: background 0.2s ease;
+}
+
+.admin-add-user-link-btn:hover {
+    background: #0f8a3d;
+    color: #ffffff;
+}
+
 /* STATS */
 .admin-stats-grid {
     display: grid;
@@ -11240,5 +11266,197 @@ html {
         left: auto !important;
         right: auto !important;
         bottom: auto !important;
+    }
+}
+
+.admin-transactions-export-btn {
+    border: none;
+    background: #0b8a70;
+    color: #ffffff;
+    border-radius: 14px;
+    padding: 12px 18px;
+    font-family: inherit;
+    font-weight: 900;
+    font-size: 15px;
+    text-decoration: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 8px 18px rgba(11, 138, 112, 0.24);
+    transition: background 0.2s ease;
+}
+
+.admin-transactions-export-btn:hover {
+    background: #09755e;
+    color: #ffffff;
+}
+
+/* Admin Accounts page's "Create Account" button - same green as Export button */
+.admin-page-heading form button {
+    background: #0b8a70;
+    box-shadow: 0 8px 18px rgba(11, 138, 112, 0.24);
+}
+
+.admin-page-heading form button:hover {
+    background: #09755e;
+}
+
+/* User Management page's "Add User" button - same green as Export button */
+.admin-add-user-link-btn {
+    background: #0b8a70;
+    box-shadow: 0 8px 18px rgba(11, 138, 112, 0.24);
+}
+
+.admin-add-user-link-btn:hover {
+    background: #09755e;
+}
+
+.admin-transactions-export-btn,
+.admin-page-heading form button,
+.admin-add-user-link-btn {
+    transition: background 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.admin-transactions-export-btn:hover,
+.admin-page-heading form button:hover,
+.admin-add-user-link-btn:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 22px rgba(11, 138, 112, 0.32);
+}
+
+html, body {
+    overflow-x: clip !important;
+}
+
+.app-layout {
+    overflow: visible !important;
+}
+
+.topbar {
+    position: -webkit-sticky !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 999 !important;
+}
+
+/* ============================================================
+   Profile Overview - Topbar & Dropdown alignment fix
+   Paste at the END of style.css. Reuses existing .icon-btn,
+   .welcome-box, .profile-dropdown, .search-box classes - no new
+   selectors, no HTML/JS changes needed.
+   ============================================================ */
+
+/* Icon buttons (bell / mail / help) were relying only on
+   font-size with no defined box - this made them misaligned
+   against the circular profile avatar. Give them the same
+   circular, centered treatment. */
+.icon-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.icon-btn i {
+    line-height: 1;
+}
+
+/* Page title block had no container rule - keep it from being
+   squeezed by the search bar on narrower desktop widths. */
+.welcome-box {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    flex-shrink: 0;
+    min-width: 180px;
+}
+
+/* Search bar should not force the topbar to overflow on medium
+   screens - let it flex instead of staying a fixed 520px. */
+.search-box {
+    flex: 1 1 420px;
+    max-width: 520px;
+    min-width: 0;
+}
+
+/* Keep icons / avatar / logout button on one consistent
+   vertical rhythm inside the topbar. */
+.top-actions {
+    flex-shrink: 0;
+}
+
+/* Dropdown: smooth fade + scale transition instead of an
+   abrupt display:none -> block swap. Position (top: 60px;
+   right: 0) already anchors it directly under the profile
+   button via .profile-menu { position: relative; } - only the
+   entrance/exit motion is added here. */
+.profile-dropdown {
+    display: block;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px) scale(0.98);
+    transform-origin: top right;
+    pointer-events: none;
+    transition: opacity 0.22s ease, transform 0.22s ease, visibility 0.22s;
+}
+
+.profile-dropdown.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+}
+
+/* Responsive - desktop and mobile compatible, sidebar untouched */
+@media (max-width: 768px) {
+    .topbar {
+        height: auto;
+        min-height: 76px;
+        padding: 14px 18px;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .welcome-box {
+        min-width: 0;
+    }
+
+    .welcome-box h3 {
+        font-size: 17px;
+    }
+
+    .search-box {
+        order: 3;
+        width: 100%;
+        max-width: 100%;
+        flex: 1 1 100%;
+        height: 46px;
+    }
+
+    .top-actions {
+        gap: 10px;
+    }
+
+    .icon-btn {
+        width: 40px;
+        height: 40px;
+    }
+
+    .profile-dropdown {
+        width: 280px;
+        right: -10px;
+    }
+}
+
+@media (max-width: 480px) {
+    .profile-dropdown {
+        width: 250px;
+        right: -20px;
     }
 }

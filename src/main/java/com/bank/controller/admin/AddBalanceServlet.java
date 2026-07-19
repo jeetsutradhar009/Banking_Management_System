@@ -20,6 +20,8 @@ import jakarta.servlet.http.HttpSession;
 public class AddBalanceServlet extends HttpServlet {
     private static final long serialVersionUID = 1L;
 
+    private static final String VIEW = "/WEB-INF/views/admin/add-balance.jsp";
+
     private final AdminDAO adminDAO = new AdminDAO();
 
     @Override
@@ -38,11 +40,11 @@ public class AddBalanceServlet extends HttpServlet {
                 request.setAttribute("account", adminDAO.findAccount(accountNo, customerId));
             }
 
-            request.getRequestDispatcher("/add-balance.jsp").forward(request, response);
+            request.getRequestDispatcher(VIEW).forward(request, response);
 
         } catch (Exception e) {
             request.setAttribute("err", e.getMessage());
-            request.getRequestDispatcher("/add-balance.jsp").forward(request, response);
+            request.getRequestDispatcher(VIEW).forward(request, response);
         }
     }
 

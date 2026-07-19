@@ -29,7 +29,7 @@ public class AdminReportServlet extends HttpServlet {
         HttpSession session = request.getSession(false);
 
         if (session == null || session.getAttribute("user") == null) {
-            response.sendRedirect(request.getContextPath() + "/login.jsp");
+            response.sendRedirect(request.getContextPath() + "/login");
             return;
         }
 
@@ -61,6 +61,6 @@ public class AdminReportServlet extends HttpServlet {
         request.setAttribute("topAccounts", reportDAO.getTopAccountsByBalance());
         request.setAttribute("recentTransactions", reportDAO.getRecentTransactions());
 
-        request.getRequestDispatcher("/adminReports.jsp").forward(request, response);
+        request.getRequestDispatcher("/WEB-INF/views/admin/adminReports.jsp").forward(request, response);
     }
 }

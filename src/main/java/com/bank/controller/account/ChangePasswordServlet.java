@@ -18,6 +18,8 @@ public class ChangePasswordServlet extends HttpServlet {
 
     private static final long serialVersionUID = 1L;
 
+    private static final String VIEW = "/WEB-INF/views/user/changePassword.jsp";
+
     private UserDAO userDAO = new UserDAO();
 
     @Override
@@ -27,11 +29,11 @@ public class ChangePasswordServlet extends HttpServlet {
         HttpSession session = request.getSession(false);
 
         if (session == null || session.getAttribute("user") == null) {
-            response.sendRedirect(request.getContextPath() + "/login.jsp");
+            response.sendRedirect(request.getContextPath() + "/login");
             return;
         }
 
-        request.getRequestDispatcher("changePassword.jsp").forward(request, response);
+        request.getRequestDispatcher(VIEW).forward(request, response);
     }
 
     @Override
@@ -43,7 +45,7 @@ public class ChangePasswordServlet extends HttpServlet {
         HttpSession session = request.getSession(false);
 
         if (session == null || session.getAttribute("user") == null) {
-            response.sendRedirect(request.getContextPath() + "/login.jsp");
+            response.sendRedirect(request.getContextPath() + "/login");
             return;
         }
 
@@ -58,7 +60,7 @@ public class ChangePasswordServlet extends HttpServlet {
                 || confirmPassword == null || confirmPassword.trim().isEmpty()) {
 
             request.setAttribute("error", "All fields are required.");
-            request.getRequestDispatcher("changePassword.jsp").forward(request, response);
+            request.getRequestDispatcher(VIEW).forward(request, response);
             return;
         }
 
@@ -68,19 +70,19 @@ public class ChangePasswordServlet extends HttpServlet {
 
         if (newPassword.length() < 6) {
             request.setAttribute("error", "New password must be at least 6 characters.");
-            request.getRequestDispatcher("changePassword.jsp").forward(request, response);
+            request.getRequestDispatcher(VIEW).forward(request, response);
             return;
         }
 
         if (!newPassword.equals(confirmPassword)) {
             request.setAttribute("error", "New password and confirm password do not match.");
-            request.getRequestDispatcher("changePassword.jsp").forward(request, response);
+            request.getRequestDispatcher(VIEW).forward(request, response);
             return;
         }
 
         if (currentPassword.equals(newPassword)) {
             request.setAttribute("error", "New password cannot be same as current password.");
-            request.getRequestDispatcher("changePassword.jsp").forward(request, response);
+            request.getRequestDispatcher(VIEW).forward(request, response);
             return;
         }
 
@@ -97,6 +99,6 @@ public class ChangePasswordServlet extends HttpServlet {
             request.setAttribute("error", "Current password is incorrect.");
         }
 
-        request.getRequestDispatcher("changePassword.jsp").forward(request, response);
+        request.getRequestDispatcher(VIEW).forward(request, response);
     }
 }

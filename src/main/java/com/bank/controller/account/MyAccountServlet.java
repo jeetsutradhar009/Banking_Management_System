@@ -27,7 +27,7 @@ public class MyAccountServlet extends HttpServlet {
         HttpSession session = request.getSession(false);
 
         if (session == null || session.getAttribute("user") == null) {
-            response.sendRedirect(request.getContextPath() + "/login.jsp");
+            response.sendRedirect(request.getContextPath() + "/login");
             return;
         }
 
@@ -42,6 +42,6 @@ public class MyAccountServlet extends HttpServlet {
             request.setAttribute("error", "Your account not found.");
         }
 
-        request.getRequestDispatcher("myAccount.jsp").forward(request, response);
+        request.getRequestDispatcher("/WEB-INF/views/user/myAccount.jsp").forward(request, response);
     }
 }

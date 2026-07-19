@@ -14200,6 +14200,88 @@ th {
     font-weight: 600;
 }
 
+/* ---------- Date of Birth (calendar) input ---------- */
+
+.create-account-input-wrap input[type="date"] {
+    cursor: pointer;
+    letter-spacing: 0.3px;
+    color-scheme: light;
+}
+
+/* Chrome / Edge / Safari native calendar icon */
+.create-account-input-wrap input[type="date"]::-webkit-calendar-picker-indicator {
+    background: transparent;
+    cursor: pointer;
+    padding: 6px;
+    margin-right: -6px;
+    border-radius: 8px;
+    /* Recolor the default dark glyph to the site's green brand color */
+    filter: invert(46%) sepia(78%) saturate(500%) hue-rotate(120deg) brightness(92%) contrast(94%);
+    transition: background 0.2s ease, transform 0.15s ease;
+}
+
+.create-account-input-wrap input[type="date"]::-webkit-calendar-picker-indicator:hover {
+    background: #e8fff4;
+    transform: scale(1.08);
+}
+
+.create-account-input-wrap input[type="date"]::-webkit-datetime-edit {
+    color: #152238;
+}
+
+.create-account-input-wrap input[type="date"]::-webkit-datetime-edit-fields-wrapper {
+    padding: 0;
+}
+
+.create-account-input-wrap input[type="date"]:focus::-webkit-datetime-edit {
+    color: #0d3b2e;
+}
+
+/* Firefox */
+.create-account-input-wrap input[type="date"]::-moz-calendar-picker-indicator {
+    filter: invert(46%) sepia(78%) saturate(500%) hue-rotate(120deg) brightness(92%) contrast(94%);
+    cursor: pointer;
+}
+
+/* ---------- Account Type dropdown ---------- */
+
+.create-account-input-wrap select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    cursor: pointer;
+    padding-right: 44px;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23009879' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 16px center;
+    background-size: 16px 16px;
+}
+
+.create-account-input-wrap select:hover {
+    border-color: #b7dccf;
+}
+
+.create-account-input-wrap select:focus {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23009879' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'><polyline points='18 15 12 9 6 15'/></svg>");
+}
+
+.create-account-input-wrap select:invalid {
+    color: #98a5b8;
+}
+
+.create-account-input-wrap select option {
+    color: #152238;
+    background: #ffffff;
+    font-weight: 600;
+    padding: 10px;
+}
+
+.create-account-input-wrap select option:checked,
+.create-account-input-wrap select option:hover {
+    background: #e8fff4;
+    color: #009879;
+}
+
 .create-account-submit-btn {
     width: 100%;
     height: 58px;
@@ -15209,6 +15291,21 @@ th {
     transition: 0.22s ease;
 }
 
+/* Reserve space on the right so the custom eye-toggle button never
+   overlaps the typed password text or sits outside the input's
+   rounded border. */
+.add-user-input-wrap input[type="password"],
+.add-user-input-wrap input[type="text"].add-user-password-visible {
+    padding-right: 52px;
+}
+
+/* Hide native browser password-reveal/clear icons (Edge/IE) so they
+   never double up with, or push out, the custom eye-toggle button. */
+.add-user-input-wrap input[type="password"]::-ms-reveal,
+.add-user-input-wrap input[type="password"]::-ms-clear {
+    display: none;
+}
+
 .add-user-input-wrap select {
     cursor: pointer;
 }
@@ -15236,6 +15333,8 @@ th {
     font-size: 19px;
     cursor: pointer;
     padding: 6px;
+    z-index: 2;
+    line-height: 1;
 }
 
 .add-user-help {
@@ -17221,4 +17320,708 @@ th {
 .audit-search-box:focus-within {
     border-color: #009879;
     box-shadow: 0 0 0 3px rgba(0, 152, 121, 0.15);
+}
+
+.add-user-input-wrap {
+    overflow: visible;
+}
+
+.password-toggle {
+    position: absolute;
+    right: 18px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    color: #64748b;
+    font-size: 19px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0;
+    margin: 0;
+    z-index: 3;
+}
+
+.password-toggle i {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.add-user-input-wrap input[type="password"],
+.add-user-input-wrap input.add-user-password-visible {
+    padding-right: 56px !important;
+}
+
+
+/* ============================================================
+   ADMIN DASHBOARD HEADER REDESIGN (sticky white card + profile
+   dropdown). Appended at the end so it reliably wins over the
+   earlier duplicated .admin-topbar/.admin-profile-chip rules
+   above, without needing to touch/clean up all of those.
+   ============================================================ */
+
+.admin-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 60;
+    background: #ffffff;
+    border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+    border-radius: 0 0 20px 20px;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+}
+
+/* PROFILE MENU (trigger + dropdown) */
+.admin-profile-menu {
+    position: relative;
+}
+
+.admin-profile-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    background: #f8fbff;
+    border-radius: 999px;
+    padding: 6px 14px 6px 6px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.admin-profile-chip:hover {
+    background: #eef6ff;
+}
+
+.admin-profile-menu.open .admin-profile-chip {
+    background: #e8fff4;
+    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.12);
+}
+
+.admin-profile-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: #0f8a4c;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 15px;
+    flex-shrink: 0;
+}
+
+.admin-profile-name {
+    font-weight: 700;
+    color: #152238;
+    font-size: 14.5px;
+    white-space: nowrap;
+}
+
+.admin-profile-chip i.bi-chevron-down {
+    color: #64748b;
+    font-size: 13px;
+    transition: transform 0.2s ease;
+}
+
+.admin-profile-menu.open .admin-profile-chip i.bi-chevron-down {
+    transform: rotate(180deg);
+}
+
+.admin-profile-dropdown {
+    position: absolute;
+    top: calc(100% + 12px);
+    right: 0;
+    width: 300px;
+    background: #ffffff;
+    border-radius: 18px;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    box-shadow: 0 20px 45px rgba(15, 23, 42, 0.16);
+    overflow: hidden;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-8px);
+    transition: opacity 0.18s ease, transform 0.18s ease, visibility 0.18s ease;
+    z-index: 70;
+}
+
+.admin-profile-menu.open .admin-profile-dropdown {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.admin-profile-dropdown-header {
+    background: linear-gradient(135deg, #e8fff4, #fff7ed);
+    padding: 18px 20px;
+    border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+.admin-profile-dropdown-header h4 {
+    margin: 0 0 6px;
+    color: #0b3d2e;
+    font-size: 15px;
+    font-weight: 900;
+    letter-spacing: 0.3px;
+}
+
+.admin-profile-dropdown-header p {
+    margin: 2px 0;
+    font-size: 12.5px;
+    color: #475569;
+}
+
+.admin-profile-dropdown-header p span {
+    font-weight: 700;
+    color: #1f2d44;
+}
+
+.admin-profile-dropdown-options {
+    display: flex;
+    flex-direction: column;
+    padding: 8px;
+}
+
+.admin-profile-dropdown-options a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 12px;
+    border-radius: 12px;
+    color: #1f2d44;
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 600;
+    transition: background 0.15s ease;
+}
+
+.admin-profile-dropdown-options a i {
+    font-size: 16px;
+    color: #0f8a4c;
+    width: 18px;
+    text-align: center;
+}
+
+.admin-profile-dropdown-options a:hover {
+    background: #f1f5f9;
+}
+
+.admin-profile-dropdown-options a.admin-profile-logout-option {
+    color: #ea580c;
+    border-top: 1px solid rgba(15, 23, 42, 0.06);
+    margin-top: 6px;
+    padding-top: 13px;
+}
+
+.admin-profile-dropdown-options a.admin-profile-logout-option i {
+    color: #ea580c;
+}
+
+.admin-profile-dropdown-options a.admin-profile-logout-option:hover {
+    background: #fff1e8;
+}
+
+/* RESPONSIVE */
+@media (max-width: 900px) {
+    .admin-topbar {
+        flex-wrap: wrap;
+        height: auto;
+        padding: 14px 16px;
+        row-gap: 12px;
+    }
+
+    .admin-search-box {
+        order: 3;
+        width: 100%;
+        flex-basis: 100%;
+    }
+
+    .admin-welcome {
+        min-width: 0;
+        flex: 1;
+    }
+
+    .admin-profile-name {
+        display: none;
+    }
+
+    .admin-profile-chip {
+        padding: 6px;
+    }
+
+    .admin-profile-dropdown {
+        width: min(300px, calc(100vw - 32px));
+        right: -8px;
+    }
+}
+
+@media (max-width: 480px) {
+    .admin-top-actions {
+        gap: 10px;
+    }
+
+    .admin-logout-btn span {
+        display: none;
+    }
+}
+
+html, body {
+    overflow-x: hidden;
+}
+
+/* ============================================================
+   Admin Sticky Topbar Fix
+   ------------------------------------------------------------
+   Paste this at the very end of oldStyle.css.
+
+   Why: .admin-layout has "overflow-x: hidden" set earlier in
+   this file (added for mobile horizontal-scroll prevention).
+   That single property breaks "position: sticky" on any
+   descendant - including .admin-topbar, which already has
+   position: sticky; top: 0; set on it, but couldn't work
+   because of this ancestor rule.
+
+   Fix: overflow-x: clip behaves the same as hidden for
+   preventing horizontal scroll, but - unlike hidden - it does
+   NOT break position: sticky on child elements. Placed at the
+   bottom of the file so it naturally overrides the earlier rule
+   without needing to find/edit it.
+   ============================================================ */
+
+.admin-layout {
+    overflow-x: clip;
+}
+
+/* Admin Sticky Topbar Fix - paste at the end of oldStyle.css */
+.admin-layout {
+    overflow-x: clip !important;
+    overflow-y: visible !important;
+}
+
+.admin-topbar {
+    position: -webkit-sticky !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 999 !important;
+}
+
+/* ============================================================
+   Admin Sticky Topbar - REAL fix
+   ------------------------------------------------------------
+   Paste this at the very end of oldStyle.css.
+
+   Root cause: .admin-main has "animation: pageFadeIn ... forwards"
+   which ends on "transform: translateY(0)". Because of
+   "forwards", that transform value is kept permanently after
+   the animation ends - and ANY transform on an ancestor
+   (even translateY(0)) breaks position: sticky/fixed on its
+   children. .admin-topbar is a direct child of .admin-main,
+   so this is what was actually blocking the sticky topbar -
+   not overflow.
+
+   Fix: cancel the transform on .admin-main specifically
+   (so its child .admin-topbar can be sticky again), and move
+   the same slide-up + fade-in load effect onto .admin-content
+   instead (the section below the topbar), so the visual
+   animation is preserved for the page content while the topbar
+   itself is no longer inside a transformed ancestor.
+   ============================================================ */
+
+.admin-main {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+}
+
+.admin-content {
+    animation: dksAdminContentFadeIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    opacity: 0;
+}
+
+@keyframes dksAdminContentFadeIn {
+    0% {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.admin-topbar {
+    position: -webkit-sticky !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 999 !important;
+}
+
+/* ============================================================
+   Admin Sticky Topbar - FINAL fix (both real root causes)
+   ------------------------------------------------------------
+   Paste this at the very end of oldStyle.css.
+
+   ROOT CAUSE 1 (the big one - affects the whole app, not just
+   admin): "html" and "body" both have "overflow-x: hidden" set
+   (appears twice in this file, around line 8590 and 9590).
+   html/body are the page's root scroll container, so this alone
+   is enough to break position: sticky everywhere, no matter what
+   .admin-layout or .admin-main have set.
+
+   ROOT CAUSE 2 (admin-specific): .admin-main has
+   "animation: pageFadeIn ... forwards" which permanently leaves
+   a "transform: translateY(0)" on it after load. Any non-none
+   transform on an ancestor breaks sticky/fixed on its children -
+   .admin-topbar is a direct child of .admin-main.
+
+   Both are fixed below, together.
+   ============================================================ */
+
+html,
+body {
+    overflow-x: clip !important;
+}
+
+.admin-main {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+}
+
+.admin-content {
+    animation: dksAdminContentFadeIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    opacity: 0;
+}
+
+@keyframes dksAdminContentFadeIn {
+    0% {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.admin-layout {
+    overflow: visible !important;
+}
+
+.admin-topbar {
+    position: -webkit-sticky !important;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 999 !important;
+}
+
+/* .admin-profile-chip styling - paste at the end of oldStyle.css */
+.admin-profile-chip {
+    height: 46px;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 0 12px;
+    background: #ecfdf5;
+    border-radius: 16px;
+    cursor: pointer;
+}
+
+.admin-profile-chip span {
+    width: 32px;
+    height: 32px;
+    border-radius: 12px;
+    background: #0b8a70;
+    color: #ffffff;
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.admin-profile-chip i {
+    color: #0b3d2e;
+    font-size: 13px;
+}
+
+/* Admin Profile - Hero card */
+.ap-hero {
+    background: linear-gradient(135deg, #0d3b2e, #1f6b4a 130%);
+    border-radius: 18px;
+    padding: 24px 28px;
+    color: #fff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.ap-hero-left { display: flex; align-items: center; gap: 18px; }
+
+.ap-avatar-wrap { position: relative; }
+
+.ap-avatar {
+    width: 76px; height: 76px; border-radius: 50%;
+    background: rgba(255,255,255,0.14);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.8rem; font-weight: 700; color: #fff;
+    border: 2px solid rgba(255,255,255,0.3);
+}
+
+.ap-avatar-badge {
+    position: absolute; bottom: 0; right: 0;
+    width: 24px; height: 24px; border-radius: 50%;
+    background: #22c55e; color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .7rem; border: 2px solid #0d3b2e;
+}
+
+.ap-hero-name-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ap-hero-name-row h2 { margin: 0; font-size: 1.3rem; }
+
+.ap-role-pill {
+    background: rgba(255,255,255,0.16);
+    padding: 4px 12px; border-radius: 999px;
+    font-size: .74rem; font-weight: 600;
+}
+
+.ap-hero-meta { display: flex; gap: 18px; margin-top: 8px; flex-wrap: wrap; font-size: .84rem; opacity: .9; }
+.ap-hero-meta i { margin-right: 5px; }
+
+.ap-hero-right { display: flex; gap: 16px; flex-wrap: wrap; }
+
+.ap-hero-stat {
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(255,255,255,0.1);
+    padding: 10px 16px; border-radius: 12px;
+}
+.ap-hero-stat i { font-size: 1.1rem; }
+.ap-hero-stat small { display: block; font-size: .72rem; opacity: .85; }
+.ap-hero-stat b { font-size: .92rem; }
+
+/* Quick Actions grid */
+.ap-quick-actions {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 12px; padding: 16px;
+}
+
+.ap-quick-action {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    padding: 16px 8px; border-radius: 12px;
+    background: #f3f8f5; border: 1px solid #dcece3;
+    text-decoration: none; color: #0d3b2e; font-size: .8rem; font-weight: 600;
+    text-align: center;
+}
+.ap-quick-action i { font-size: 1.3rem; color: #14532d; }
+
+/* Coming-soon placeholder note inside a panel */
+.ap-coming-soon-note {
+    display: flex; align-items: center; gap: 10px;
+    padding: 16px; color: #7c8a83; font-size: .84rem;
+}
+.ap-coming-soon-note i { font-size: 1.2rem; color: #a3620a; }
+
+@media (max-width: 900px) {
+    .ap-hero { flex-direction: column; align-items: flex-start; }
+    .ap-quick-actions { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* CSS PATCH */
+
+/* --- Balance the two-column layout (Personal Info + Quick Actions
+   on the left, Security Info + Login Activity on the right).
+   .myacc-details-grid defaults to 3 equal columns for other pages,
+   but this page only renders 2 direct child <div>s, so this only
+   fires for that exact 2-column case. */
+@media (min-width: 901px) {
+    .myacc-details-grid:has(> div:nth-child(2):last-child) {
+        grid-template-columns: 1.12fr 1fr;
+    }
+}
+
+/* Consistent vertical spacing between stacked cards in each column */
+.myacc-details-grid > div > .myacc-panel + .myacc-panel {
+    margin-top: 24px;
+}
+
+/* --- Edit Profile button: compact, professional size (scoped to
+   the Personal Information card header only, so "Back to Dashboard"
+   elsewhere on the page is unaffected) --- */
+.myacc-panel-head .admin-export-btn {
+    padding: 8px 16px;
+    font-size: 13px;
+    gap: 7px;
+    border-radius: 10px;
+}
+
+.myacc-panel-head .admin-export-btn i {
+    font-size: 13px;
+}
+
+/* --- Quick Actions: hover polish --- */
+.ap-quick-action {
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+    cursor: pointer;
+}
+
+.ap-quick-action:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 22px rgba(15, 61, 46, 0.14);
+    border-color: #14532d;
+    background: #eaf6ef;
+}
+
+.ap-quick-action:hover i {
+    color: #0d3b2e;
+}
+
+/* --- Security Information: row alignment/spacing --- */
+.myacc-panel:has(.ap-status-pill) .myacc-info-row {
+    padding: 14px 0;
+    align-items: center;
+}
+
+/* --- Recent Login Activity: tighter, aligned rows --- */
+.ap-activity-item {
+    align-items: center;
+}
+
+.ap-activity-top b {
+    font-size: 13.5px;
+    color: #1e293b;
+}
+
+/* --- "View All" link on Recent Login Activity --- */
+.myacc-panel-head a[onclick*="Login Activity"] {
+    text-decoration: none;
+    color: #0f8a4c;
+    font-weight: 700;
+    padding: 5px 10px;
+    border-radius: 8px;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.myacc-panel-head a[onclick*="Login Activity"]:hover {
+    background: #e8fff4;
+    color: #0b3d2e;
+}
+
+/* --- Smooth transitions on cards generally --- */
+.myacc-panel {
+    transition: box-shadow 0.2s ease;
+}
+
+/* ===== FIX: Account Type dropdown + DOB calendar icon ===== */
+
+.create-account-input-wrap select {
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    appearance: none !important;
+    cursor: pointer;
+    padding-right: 44px !important;
+    background-color: #f8fbff !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23009879' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 16px center !important;
+    background-size: 16px 16px !important;
+}
+
+.create-account-input-wrap select::-ms-expand {
+    display: none;
+}
+
+.create-account-input-wrap input[type="date"]::-webkit-calendar-picker-indicator {
+    background: transparent !important;
+    cursor: pointer;
+    width: 20px !important;
+    height: 20px !important;
+    padding: 4px !important;
+    margin-right: 0 !important;
+    border-radius: 6px;
+    opacity: 0.85;
+    filter: invert(33%) sepia(74%) saturate(1000%) hue-rotate(120deg) brightness(90%);
+    transition: opacity 0.2s ease, transform 0.15s ease;
+}
+
+.create-account-input-wrap input[type="date"]::-webkit-calendar-picker-indicator:hover {
+    opacity: 1;
+    transform: scale(1.1);
+    background: transparent !important;
+}
+
+/* ===== FIX: DOB calendar icon invisible - simplified, no filter ===== */
+
+.create-account-input-wrap input[type="date"]::-webkit-calendar-picker-indicator {
+    background: transparent !important;
+    cursor: pointer;
+    width: 20px !important;
+    height: 20px !important;
+    padding: 4px !important;
+    margin-right: 0 !important;
+    border-radius: 6px;
+    opacity: 1 !important;
+    filter: none !important;
+    transition: transform 0.15s ease;
+}
+
+.create-account-input-wrap input[type="date"]::-webkit-calendar-picker-indicator:hover {
+    transform: scale(1.1);
+    background: transparent !important;
+}
+
+/* ===== FIX: DOB calendar icon was being clipped - reserve space ===== */
+
+.create-account-input-wrap input[type="date"] {
+    padding-right: 44px !important;
+    box-sizing: border-box !important;
+}
+
+.create-account-input-wrap input[type="date"]::-webkit-calendar-picker-indicator {
+    background: transparent !important;
+    cursor: pointer;
+    width: 20px !important;
+    height: 20px !important;
+    padding: 4px !important;
+    margin: 0 !important;
+    border-radius: 6px;
+    opacity: 1 !important;
+    filter: none !important;
+    transition: transform 0.15s ease;
+}
+
+.create-account-input-wrap input[type="date"]::-webkit-calendar-picker-indicator:hover {
+    transform: scale(1.1);
+    background: transparent !important;
+}
+
+/* ===== FINAL FIX: custom calendar icon (native glyph rendering broken in this browser) ===== */
+
+.create-account-input-wrap input[type="date"] {
+    padding-right: 46px !important;
+    box-sizing: border-box !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23009879' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='3'%3E%3C/rect%3E%3Cline x1='16' y1='2' x2='16' y2='6'%3E%3C/line%3E%3Cline x1='8' y1='2' x2='8' y2='6'%3E%3C/line%3E%3Cline x1='3' y1='10' x2='21' y2='10'%3E%3C/line%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 16px center !important;
+    background-size: 20px 20px !important;
+}
+
+.create-account-input-wrap input[type="date"]::-webkit-calendar-picker-indicator {
+    position: absolute;
+    right: 0;
+    width: 46px !important;
+    height: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    opacity: 0 !important;
+    cursor: pointer;
 }

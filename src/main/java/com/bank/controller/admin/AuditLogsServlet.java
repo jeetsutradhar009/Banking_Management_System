@@ -25,7 +25,7 @@ public class AuditLogsServlet extends HttpServlet {
 
         try {
             request.setAttribute("logs", adminDAO.getAuditLogs());
-            request.getRequestDispatcher("/audit-logs.jsp").forward(request, response);
+            request.getRequestDispatcher("/WEB-INF/views/admin/audit-logs.jsp").forward(request, response);
         } catch (Exception e) {
             throw new ServletException(e);
         }

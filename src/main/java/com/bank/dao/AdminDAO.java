@@ -1,9 +1,11 @@
 package com.bank.dao;
 
 import com.bank.model.Account;
+import com.bank.model.ActivationResult;
 import com.bank.model.Transaction;
 import com.bank.model.User;
 import com.bank.util.DBConnection;
+import com.bank.util.PasswordUtil;
 
 import java.math.BigDecimal;
 import java.sql.Connection;
@@ -296,24 +298,142 @@ public class AdminDAO {
         return transactions;
     }
 
-    public boolean addUser(User actor, String fullName, String email, String phone, String password, String role) throws SQLException {
-        String sql = "INSERT INTO users(full_name, email, phone, password, role) VALUES(?,?,?,?,?)";
+    /**
+     * Admin "Add User" page - CUSTOMER role flow.
+     *
+     * Verifies that the given Customer ID and Account Number both
+     * exist AND belong to the same customer (ownership check), then
+     * activates online banking for that EXISTING customer with a
+     * fresh, auto-generated temporary password. The admin never types
+     * or sees a password they chose - it is generated here.
+     *
+     * This only UPDATEs an existing users row - it never creates a
+     * new user, and never touches the accounts table, so it cannot
+     * affect the customer account opening flow or existing DB
+     * relations.
+     */
+    public ActivationResult activateOnlineBankingForCustomer(User actor, String customerId, String accountNumber)
+            throws SQLException {
+
+        String lookupSql = "SELECT u.user_id, u.full_name, u.email " +
+                "FROM users u " +
+                "INNER JOIN accounts a ON a.user_id = u.user_id " +
+                "WHERE TRIM(u.customer_id) = ? " +
+                "  AND TRIM(a.account_number) = ? " +
+                "  AND u.role = 'USER' " +
+                "LIMIT 1";
+
+        try (Connection con = DBConnection.getConnection()) {
+
+            int userId;
+            String fullName;
+            String email;
+
+            try (PreparedStatement ps = con.prepareStatement(lookupSql)) {
+                ps.setString(1, customerId.trim());
+                ps.setString(2, accountNumber.trim());
+
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (!rs.next()) {
+                        return new ActivationResult(false,
+                                "No matching customer found for this Customer ID and Account Number. "
+                                        + "Please verify both values belong to the same customer.");
+                    }
+
+                    userId = rs.getInt("user_id");
+                    fullName = rs.getString("full_name");
+                    email = rs.getString("email");
+                }
+            }
+
+            String temporaryPassword = generateTemporaryPassword();
+
+            String updateSql = "UPDATE users SET password = ?, online_banking_enabled = 1 WHERE user_id = ?";
+
+            try (PreparedStatement ps = con.prepareStatement(updateSql)) {
+                ps.setString(1, PasswordUtil.process(temporaryPassword));
+                ps.setInt(2, userId);
+
+                int rows = ps.executeUpdate();
+
+                if (rows == 0) {
+                    return new ActivationResult(false, "Unable to activate online banking for this customer.");
+                }
+            }
+
+            logAction(con, actor, "ACTIVATE_ONLINE_BANKING",
+                    "Admin activated online banking for Customer ID " + customerId.trim());
+
+            return new ActivationResult(true, "Activation Complete Successfully",
+                    fullName, email, customerId.trim(), temporaryPassword);
+        }
+    }
+
+    /**
+     * Admin "Add User" page - ADMIN role flow.
+     *
+     * Creates a brand-new ADMIN user directly, active and ready to log
+     * in immediately with the password the admin entered on the form
+     * (role = ADMIN, online_banking_enabled = 1).
+     *
+     * If customerId is blank, one is auto-generated using the same
+     * Customer ID generator the account-opening flows use
+     * (UserDAO.generateUniqueCustomerId()), so it stays consistent
+     * with, and never collides with, customer Customer IDs.
+     */
+    public String addAdminUser(User actor, String fullName, String email, String phone,
+                                String dob, String address, String password, String customerId)
+            throws SQLException {
+
+        String finalCustomerId = customerId;
+
+        if (finalCustomerId == null || finalCustomerId.trim().isEmpty()) {
+            try {
+                finalCustomerId = new UserDAO().generateUniqueCustomerId();
+            } catch (SQLException se) {
+                throw se;
+            } catch (Exception e) {
+                throw new SQLException("Unable to generate a Customer ID for the new admin.", e);
+            }
+        }
+
+        String sql = "INSERT INTO users " +
+                "(customer_id, full_name, dob, address, email, phone, password, role, online_banking_enabled) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, 'ADMIN', 1)";
 
         try (Connection con = DBConnection.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
 
-            ps.setString(1, fullName);
-            ps.setString(2, email);
-            ps.setString(3, phone);
-            ps.setString(4, password);
-            ps.setString(5, role);
+            ps.setString(1, finalCustomerId.trim());
+            ps.setString(2, fullName.trim());
+
+            if (dob != null && !dob.trim().isEmpty()) {
+                ps.setDate(3, java.sql.Date.valueOf(dob.trim()));
+            } else {
+                ps.setNull(3, java.sql.Types.DATE);
+            }
+
+            ps.setString(4, address == null ? null : address.trim());
+            ps.setString(5, email.trim());
+            ps.setString(6, phone.trim());
+            ps.setString(7, PasswordUtil.process(password));
 
             int rows = ps.executeUpdate();
 
-            logAction(con, actor, "ADD_USER", "Admin added new user: " + email);
+            logAction(con, actor, "ADD_ADMIN", "Admin created new ADMIN user: " + email.trim()
+                    + " (Customer ID " + finalCustomerId.trim() + ")");
 
-            return rows > 0;
+            if (rows == 0) {
+                throw new SQLException("Unable to create admin user.");
+            }
+
+            return finalCustomerId.trim();
         }
+    }
+
+    private String generateTemporaryPassword() {
+        int randomDigits = new Random().nextInt(9000) + 1000;
+        return "DKS@" + randomDigits;
     }
 
     public boolean changeAccountStatus(User actor, String accountNumber, String newStatus) throws SQLException {
@@ -335,10 +455,10 @@ public class AdminDAO {
         }
     }
 
-    public Map<String, Object> findAccount(String accountNumber, String userId) throws SQLException {
+    public Map<String, Object> findAccount(String accountNumber, String customerId) throws SQLException {
         StringBuilder sql = new StringBuilder();
 
-        sql.append("SELECT a.account_id, a.user_id, u.full_name, u.email, u.phone, ");
+        sql.append("SELECT a.account_id, a.user_id, u.customer_id, u.full_name, u.email, u.phone, ");
         sql.append("a.account_number, a.account_type, a.balance, a.status, a.created_at ");
         sql.append("FROM accounts a ");
         sql.append("LEFT JOIN users u ON a.user_id = u.user_id ");
@@ -350,8 +470,12 @@ public class AdminDAO {
             sql.append("a.account_number = ? ");
             params.add(accountNumber.trim());
         } else {
-            sql.append("a.user_id = ? ");
-            params.add(Integer.parseInt(userId.trim()));
+            // customer_id is the 10-digit VARCHAR customer-facing ID
+            // (users.customer_id), not the internal numeric user_id -
+            // it must be matched as a string against the joined users
+            // table, never parsed as an int.
+            sql.append("u.customer_id = ? ");
+            params.add(customerId.trim());
         }
 
         sql.append("ORDER BY a.account_id DESC LIMIT 1");

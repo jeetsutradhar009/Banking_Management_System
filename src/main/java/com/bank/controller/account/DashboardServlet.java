@@ -26,7 +26,7 @@ public class DashboardServlet extends HttpServlet {
         HttpSession session = request.getSession(false);
 
         if (session == null || session.getAttribute("user") == null) {
-            response.sendRedirect("login.jsp");
+            response.sendRedirect(request.getContextPath() + "/login");
             return;
         }
 
@@ -35,6 +35,6 @@ public class DashboardServlet extends HttpServlet {
         Account account = accountDAO.getAccountByUserId(user.getUserId());
 
         request.setAttribute("account", account);
-        request.getRequestDispatcher("dashboard.jsp").forward(request, response);
+        request.getRequestDispatcher("/WEB-INF/views/user/dashboard.jsp").forward(request, response);
     }
 }

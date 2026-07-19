@@ -17,12 +17,14 @@ public class RegisterServlet extends HttpServlet {
 
     private static final long serialVersionUID = 1L;
 
+    private static final String VIEW = "/WEB-INF/views/auth/register.jsp";
+
     private UserDAO userDAO = new UserDAO();
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        request.getRequestDispatcher("register.jsp").forward(request, response);
+        request.getRequestDispatcher(VIEW).forward(request, response);
     }
 
     @Override
@@ -37,7 +39,7 @@ public class RegisterServlet extends HttpServlet {
 
         if (isEmpty(customerId) || isEmpty(password) || isEmpty(confirmPassword)) {
             request.setAttribute("error", "Customer ID, password and confirm password are required.");
-            request.getRequestDispatcher("register.jsp").forward(request, response);
+            request.getRequestDispatcher(VIEW).forward(request, response);
             return;
         }
 
@@ -47,19 +49,19 @@ public class RegisterServlet extends HttpServlet {
 
         if (!customerId.matches("[0-9]{10}")) {
             request.setAttribute("error", "Customer ID must be 10 digits.");
-            request.getRequestDispatcher("register.jsp").forward(request, response);
+            request.getRequestDispatcher(VIEW).forward(request, response);
             return;
         }
 
         if (password.length() < 6) {
             request.setAttribute("error", "Password must be at least 6 characters.");
-            request.getRequestDispatcher("register.jsp").forward(request, response);
+            request.getRequestDispatcher(VIEW).forward(request, response);
             return;
         }
 
         if (!password.equals(confirmPassword)) {
             request.setAttribute("error", "Password and confirm password do not match.");
-            request.getRequestDispatcher("register.jsp").forward(request, response);
+            request.getRequestDispatcher(VIEW).forward(request, response);
             return;
         }
 
@@ -67,13 +69,13 @@ public class RegisterServlet extends HttpServlet {
 
         if (info == null) {
             request.setAttribute("error", "Invalid Customer ID. Please open account first.");
-            request.getRequestDispatcher("register.jsp").forward(request, response);
+            request.getRequestDispatcher(VIEW).forward(request, response);
             return;
         }
 
         if (info.isOnlineBankingEnabled()) {
             request.setAttribute("error", "Online banking already registered. Please login.");
-            request.getRequestDispatcher("register.jsp").forward(request, response);
+            request.getRequestDispatcher(VIEW).forward(request, response);
             return;
         }
 
@@ -83,10 +85,10 @@ public class RegisterServlet extends HttpServlet {
             AuditLogger.logByIdentifier(customerId, info.getFullName(),
                     "REGISTER_ONLINE_BANKING", "Customer ID " + customerId + " activated online banking");
 
-            response.sendRedirect(request.getContextPath() + "/login.jsp?success=Registration%20completed.%20Login%20with%20Customer%20ID.");
+            response.sendRedirect(request.getContextPath() + "/login?success=Registration%20completed.%20Login%20with%20Customer%20ID.");
         } else {
             request.setAttribute("error", "Registration failed. Please try again.");
-            request.getRequestDispatcher("register.jsp").forward(request, response);
+            request.getRequestDispatcher(VIEW).forward(request, response);
         }
     }
 

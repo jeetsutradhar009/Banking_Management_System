@@ -23,13 +23,13 @@ public class ServicesServlet extends HttpServlet {
         HttpSession session = request.getSession(false);
 
         if (session == null || session.getAttribute("user") == null) {
-            response.sendRedirect(request.getContextPath() + "/login.jsp");
+            response.sendRedirect(request.getContextPath() + "/login");
             return;
         }
 
         User user = (User) session.getAttribute("user");
         request.setAttribute("user", user);
 
-        request.getRequestDispatcher("services.jsp").forward(request, response);
+        request.getRequestDispatcher("/WEB-INF/views/common/services.jsp").forward(request, response);
     }
 }

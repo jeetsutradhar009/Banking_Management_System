@@ -6,9 +6,9 @@
     <meta charset="UTF-8">
     <title>DKS Bank - Secure Online Banking</title>
     
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
     <link rel="icon" type="image/png" href="${pageContext.request.contextPath}/images/logo.png">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/style.css?v=200">
 
@@ -67,7 +67,7 @@
 
         <div class="index-login-dropdown-menu">
 
-            <a href="${pageContext.request.contextPath}/login.jsp">
+            <a href="${pageContext.request.contextPath}/login">
                 <i class="bi bi-box-arrow-in-right"></i>
                 <span>
                     Login to Net Banking
@@ -75,7 +75,7 @@
                 </span>
             </a>
 
-            <a href="${pageContext.request.contextPath}/register.jsp">
+            <a href="${pageContext.request.contextPath}/register">
                 <i class="bi bi-person-check"></i>
                 <span>
                     Register Online Banking
@@ -124,7 +124,7 @@
                     Open New Account
                 </a>
 
-                <a href="${pageContext.request.contextPath}/register.jsp" class="index-outline-btn">
+                <a href="${pageContext.request.contextPath}/register" class="index-outline-btn">
                     <i class="bi bi-person-check"></i>
                     Register Online Banking
                 </a>
@@ -385,7 +385,7 @@
                 Never share your Customer ID password, OTP, PIN or account details with anyone.
             </p>
 
-            <a href="${pageContext.request.contextPath}/login.jsp">
+            <a href="${pageContext.request.contextPath}/login">
                 Secure Login
                 <i class="bi bi-arrow-right"></i>
             </a>
@@ -415,7 +415,7 @@
                     Open Account
                 </a>
 
-                <a href="${pageContext.request.contextPath}/register.jsp" class="index-outline-light-btn">
+                <a href="${pageContext.request.contextPath}/register" class="index-outline-light-btn">
                     Register Online Banking
                 </a>
 
@@ -443,8 +443,8 @@
             <h4>Quick Links</h4>
             <a href="${pageContext.request.contextPath}/index.jsp">Home</a>
             <a href="${pageContext.request.contextPath}/open-account">Open Account</a>
-            <a href="${pageContext.request.contextPath}/register.jsp">Register Online Banking</a>
-            <a href="${pageContext.request.contextPath}/login.jsp">Login</a>
+            <a href="${pageContext.request.contextPath}/register">Register Online Banking</a>
+            <a href="${pageContext.request.contextPath}/login">Login</a>
         </div>
 
         <div>

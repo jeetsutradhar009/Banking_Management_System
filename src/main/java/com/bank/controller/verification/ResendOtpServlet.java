@@ -25,6 +25,9 @@ public class ResendOtpServlet extends HttpServlet {
     private static final int OTP_VALIDITY_MINUTES = 10;
     private static final int RESEND_COOLDOWN_SECONDS = 45;
 
+    private static final String VIEW_OPEN_ACCOUNT = "/WEB-INF/views/verification/openAccount.jsp";
+    private static final String VIEW_VERIFY_OTP = "/WEB-INF/views/verification/verifyOtp.jsp";
+
     private final OtpDAO otpDAO = new OtpDAO();
     private final EmailService emailService = new EmailService();
     private final SecureRandom random = new SecureRandom();
@@ -44,7 +47,7 @@ public class ResendOtpServlet extends HttpServlet {
         try {
             if (isEmpty(token)) {
                 request.setAttribute("error", "Invalid verification link. Please open your account again.");
-                request.getRequestDispatcher("openAccount.jsp").forward(request, response);
+                request.getRequestDispatcher(VIEW_OPEN_ACCOUNT).forward(request, response);
                 return;
             }
 
@@ -52,13 +55,13 @@ public class ResendOtpServlet extends HttpServlet {
 
             if (otpVerification == null) {
                 request.setAttribute("error", "Invalid or expired verification link. Please open your account again.");
-                request.getRequestDispatcher("openAccount.jsp").forward(request, response);
+                request.getRequestDispatcher(VIEW_OPEN_ACCOUNT).forward(request, response);
                 return;
             }
 
             if (!"PENDING".equalsIgnoreCase(otpVerification.getStatus())) {
                 request.setAttribute("error", "This OTP has already been used or is no longer valid. Please open your account again.");
-                request.getRequestDispatcher("openAccount.jsp").forward(request, response);
+                request.getRequestDispatcher(VIEW_OPEN_ACCOUNT).forward(request, response);
                 return;
             }
 
@@ -108,7 +111,7 @@ public class ResendOtpServlet extends HttpServlet {
         } catch (Exception e) {
             e.printStackTrace();
             request.setAttribute("error", "Something went wrong while resending the OTP. Please try again.");
-            request.getRequestDispatcher("openAccount.jsp").forward(request, response);
+            request.getRequestDispatcher(VIEW_OPEN_ACCOUNT).forward(request, response);
         }
     }
 
@@ -123,7 +126,7 @@ public class ResendOtpServlet extends HttpServlet {
             request.setAttribute("email", otpVerification.getEmail());
         }
 
-        request.getRequestDispatcher("verifyOtp.jsp").forward(request, response);
+        request.getRequestDispatcher(VIEW_VERIFY_OTP).forward(request, response);
     }
 
     private long secondsSince(Timestamp lastSentAt) {

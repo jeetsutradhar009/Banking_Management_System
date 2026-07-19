@@ -13,7 +13,7 @@ public class AdminAuth {
         HttpSession session = request.getSession(false);
 
         if (session == null) {
-            response.sendRedirect(request.getContextPath() + "/login.jsp?error=Please login first");
+            response.sendRedirect(request.getContextPath() + "/login?error=Please login first");
             return false;
         }
 
@@ -47,7 +47,7 @@ public class AdminAuth {
         }
 
         if (!"ADMIN".equalsIgnoreCase(role)) {
-            response.sendRedirect(request.getContextPath() + "/login.jsp?error=Admin access required");
+            response.sendRedirect(request.getContextPath() + "/login?error=Admin access required");
             return false;
         }
 

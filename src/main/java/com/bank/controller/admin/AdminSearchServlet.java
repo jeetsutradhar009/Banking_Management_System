@@ -41,14 +41,14 @@ public class AdminSearchServlet extends HttpServlet {
         request.setAttribute("accounts", adminDAO.searchAccounts(keyword));
         request.setAttribute("transactions", adminDAO.searchTransactions(keyword));
 
-        request.getRequestDispatcher("/adminSearch.jsp").forward(request, response);
+        request.getRequestDispatcher("/WEB-INF/views/admin/adminSearch.jsp").forward(request, response);
     }
 
     private boolean isAdmin(HttpServletRequest request, HttpServletResponse response) throws IOException {
         HttpSession session = request.getSession(false);
 
         if (session == null || session.getAttribute("user") == null) {
-            response.sendRedirect(request.getContextPath() + "/login.jsp");
+            response.sendRedirect(request.getContextPath() + "/login");
             return false;
         }
 

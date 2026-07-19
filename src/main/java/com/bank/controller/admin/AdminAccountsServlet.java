@@ -37,14 +37,14 @@ public class AdminAccountsServlet extends HttpServlet {
             request.setAttribute("accounts", adminDAO.getAllAccounts());
         }
 
-        request.getRequestDispatcher("/adminAccounts.jsp").forward(request, response);
+        request.getRequestDispatcher("/WEB-INF/views/admin/adminAccounts.jsp").forward(request, response);
     }
 
     private boolean isAdmin(HttpServletRequest request, HttpServletResponse response) throws IOException {
         HttpSession session = request.getSession(false);
 
         if (session == null || session.getAttribute("user") == null) {
-            response.sendRedirect(request.getContextPath() + "/login.jsp");
+            response.sendRedirect(request.getContextPath() + "/login");
             return false;
         }
 

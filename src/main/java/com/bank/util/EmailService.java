@@ -13,34 +13,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 
-/**
- * EmailService
- *
- * Single Responsibility: send transactional emails (currently: Account
- * Opening OTP) over SMTP using the Jakarta Mail API.
- *
- * Configuration resolution order (same pattern as {@link DBConnection}):
- *
- *   1. Environment variables (used in production / Render deployment):
- *        SMTP_HOST
- *        SMTP_PORT
- *        SMTP_USERNAME
- *        SMTP_PASSWORD
- *        SMTP_FROM_EMAIL
- *        SMTP_FROM_NAME
- *
- *   2. If any environment variable is missing, falls back to a
- *      classpath resource "email.properties" (used for local
- *      development only). This file is NOT committed to source
- *      control - see email.properties.example for the template.
- *
- * No SMTP credentials are ever hardcoded in this class.
- *
- * Every send() call returns an {@link EmailResult} instead of throwing
- * or silently swallowing failures, so callers (OpenAccountServlet,
- * ResendOtpServlet) can react to a failed send (e.g. show an error
- * instead of redirecting to the OTP page).
- */
 public class EmailService {
 
     private static final String PROPERTIES_FILE = "email.properties";
@@ -63,16 +35,6 @@ public class EmailService {
         this.fromName = resolve("SMTP_FROM_NAME", fallback);
     }
 
-    /**
-     * Sends the Account Opening OTP email.
-     *
-     * @param toEmail  recipient email address
-     * @param fullName recipient full name (used in greeting)
-     * @param otpCode  the plain 6-digit OTP (never persisted in plain form,
-     *                 only ever passed in-memory to be emailed)
-     * @param validityMinutes how many minutes the OTP stays valid, shown in the email
-     * @return EmailResult indicating success/failure - callers MUST check this
-     */
     public EmailResult sendOtpEmail(String toEmail, String fullName, String otpCode, int validityMinutes) {
 
         if (isBlank(smtpHost) || isBlank(smtpPort) || isBlank(smtpUsername)
@@ -103,16 +65,6 @@ public class EmailService {
         }
     }
 
-    /**
-     * Sends the Forgot Password reset link email.
-     *
-     * @param toEmail   recipient email address
-     * @param fullName  recipient full name (used in greeting)
-     * @param resetLink the full, ready-to-click reset URL (built by the
-     *                  caller from the current request, e.g.
-     *                  https://host/context/reset-password?token=...)
-     * @return EmailResult indicating success/failure - callers MUST check this
-     */
     public EmailResult sendPasswordResetEmail(String toEmail, String fullName, String resetLink) {
 
         if (isBlank(smtpHost) || isBlank(smtpPort) || isBlank(smtpUsername)
@@ -140,6 +92,120 @@ public class EmailService {
         } catch (MessagingException | java.io.UnsupportedEncodingException e) {
             e.printStackTrace();
             return EmailResult.failure("Unable to send password reset email. Please try again in a moment.");
+        }
+    }
+
+    /**
+     * Sends the new-account details email for accounts created by an
+     * admin (CreateAccountServlet) - the same Customer ID / Account
+     * Number / IFSC Code shown on the admin's success popup.
+     *
+     * No login password or any other credential is ever included in
+     * this email. Instead, the customer is pointed to the existing
+     * self-service "/register" route (Online Banking Registration) via
+     * a button, using the application's own current base URL rather
+     * than a hardcoded host.
+     *
+     * @param toEmail         recipient email address
+     * @param fullName        recipient full name (used in greeting)
+     * @param customerId      the generated Customer ID
+     * @param accountNumber   the generated Account Number
+     * @param ifscCode        the branch IFSC code
+     * @param registrationUrl full, ready-to-click URL to the Online
+     *                        Banking registration page (built by the
+     *                        caller from the current request, e.g.
+     *                        https://host/context/register)
+     * @return EmailResult indicating success/failure - callers MUST check this
+     */
+    public EmailResult sendAccountDetailsEmail(String toEmail,
+                                                String fullName,
+                                                String customerId,
+                                                String accountNumber,
+                                                String ifscCode,
+                                                String registrationUrl) {
+
+        if (isBlank(smtpHost) || isBlank(smtpPort) || isBlank(smtpUsername)
+                || isBlank(smtpPassword) || isBlank(fromEmail)) {
+
+            return EmailResult.failure(
+                    "Email service is not configured. Please set SMTP_HOST, SMTP_PORT, "
+                    + "SMTP_USERNAME, SMTP_PASSWORD and SMTP_FROM_EMAIL (environment variables "
+                    + "or email.properties).");
+        }
+
+        try {
+            Session session = buildSession();
+
+            MimeMessage message = new MimeMessage(session);
+            message.setFrom(new InternetAddress(fromEmail, isBlank(fromName) ? "DKS Bank" : fromName));
+            message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(toEmail));
+            message.setSubject("DKS Bank - Your New Account Details");
+            message.setContent(
+                    buildAccountDetailsEmailHtml(fullName, customerId, accountNumber, ifscCode, registrationUrl),
+                    "text/html; charset=UTF-8"
+            );
+
+            Transport.send(message);
+
+            return EmailResult.success();
+
+        } catch (MessagingException | java.io.UnsupportedEncodingException e) {
+            e.printStackTrace();
+            return EmailResult.failure("Unable to send account details email. Please try again in a moment.");
+        }
+    }
+
+    /**
+     * Sends the "Online Banking Activated" email when an admin
+     * activates online banking for an existing customer via the Add
+     * User (CUSTOMER role) flow. Includes the auto-generated temporary
+     * password, since the whole point of this flow is that the
+     * customer needs it to log in for the first time - unlike
+     * sendAccountDetailsEmail(), which deliberately never includes a
+     * password.
+     *
+     * @param toEmail           recipient email address
+     * @param fullName          recipient full name (used in greeting)
+     * @param customerId        the customer's existing Customer ID
+     * @param temporaryPassword the auto-generated temporary password
+     * @param loginUrl          full, ready-to-click URL to the login page
+     *                          (built by the caller from the current request)
+     * @return EmailResult indicating success/failure - callers MUST check this
+     */
+    public EmailResult sendOnlineBankingActivatedEmail(String toEmail,
+                                                        String fullName,
+                                                        String customerId,
+                                                        String temporaryPassword,
+                                                        String loginUrl) {
+
+        if (isBlank(smtpHost) || isBlank(smtpPort) || isBlank(smtpUsername)
+                || isBlank(smtpPassword) || isBlank(fromEmail)) {
+
+            return EmailResult.failure(
+                    "Email service is not configured. Please set SMTP_HOST, SMTP_PORT, "
+                    + "SMTP_USERNAME, SMTP_PASSWORD and SMTP_FROM_EMAIL (environment variables "
+                    + "or email.properties).");
+        }
+
+        try {
+            Session session = buildSession();
+
+            MimeMessage message = new MimeMessage(session);
+            message.setFrom(new InternetAddress(fromEmail, isBlank(fromName) ? "DKS Bank" : fromName));
+            message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(toEmail));
+            message.setSubject("DKS Bank - Online Banking Activated");
+            message.setContent(
+                    buildOnlineBankingActivatedEmailHtml(fullName, customerId, temporaryPassword, loginUrl),
+                    "text/html; charset=UTF-8"
+            );
+
+            Transport.send(message);
+
+            return EmailResult.success();
+
+        } catch (MessagingException | java.io.UnsupportedEncodingException e) {
+            e.printStackTrace();
+            return EmailResult.failure("Unable to send activation email. Please try again in a moment.");
         }
     }
 
@@ -187,6 +253,154 @@ public class EmailService {
                 + "DKS Bank";
     }
 
+    private String buildAccountDetailsEmailHtml(String fullName,
+                                                 String customerId,
+                                                 String accountNumber,
+                                                 String ifscCode,
+                                                 String registrationUrl) {
+        String name = escapeHtml(isBlank(fullName) ? "Customer" : fullName);
+        String custId = escapeHtml(customerId);
+        String accNo = escapeHtml(accountNumber);
+        String ifsc = escapeHtml(ifscCode);
+        String regUrl = escapeHtml(registrationUrl);
+
+        return "<!DOCTYPE html>"
+                + "<html><head><meta charset=\"UTF-8\"></head>"
+                + "<body style=\"margin:0;padding:0;background:#f2f6f4;font-family:'Segoe UI',Arial,sans-serif;\">"
+                + "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#f2f6f4;padding:32px 0;\">"
+                + "<tr><td align=\"center\">"
+                + "<table role=\"presentation\" width=\"480\" cellpadding=\"0\" cellspacing=\"0\" "
+                + "style=\"background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 24px rgba(15,23,42,0.08);\">"
+
+                // Header / branding
+                + "<tr><td style=\"background:#0f8a4c;padding:24px 32px;text-align:center;\">"
+                + "<span style=\"color:#ffffff;font-size:20px;font-weight:700;letter-spacing:0.5px;\">DKS Bank</span>"
+                + "</td></tr>"
+
+                // Body
+                + "<tr><td style=\"padding:32px;\">"
+                + "<p style=\"margin:0 0 16px;color:#0d3b2e;font-size:16px;\">Dear <strong>" + name + "</strong>,</p>"
+                + "<p style=\"margin:0 0 20px;color:#3f4b46;font-size:14px;line-height:1.6;\">"
+                + "Your new bank account has been opened successfully with DKS Bank. Here are your account details:"
+                + "</p>"
+
+                // Account details card
+                + "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" "
+                + "style=\"background:#f3f8f5;border:1px solid #dcece3;border-radius:12px;\">"
+                + detailRow("Customer Name", name, false)
+                + detailRow("Customer ID", custId, true)
+                + detailRow("Account Number", accNo, true)
+                + detailRow("IFSC Code", ifsc, true)
+                + "</table>"
+
+                + "<p style=\"margin:24px 0 16px;color:#3f4b46;font-size:14px;line-height:1.6;\">"
+                + "To use online banking services, please register using the button below."
+                + "</p>"
+
+                // Registration button
+                + "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:0 auto;\">"
+                + "<tr><td style=\"border-radius:10px;background:#16a34a;\">"
+                + "<a href=\"" + regUrl + "\" "
+                + "style=\"display:inline-block;padding:14px 32px;color:#ffffff;font-size:14px;font-weight:700;"
+                + "text-decoration:none;border-radius:10px;\">Register for Online Banking</a>"
+                + "</td></tr></table>"
+
+                + "<p style=\"margin:28px 0 0;color:#8a958f;font-size:12px;line-height:1.6;\">"
+                + "For your security, DKS Bank will never ask for your password or OTP over email or phone. "
+                + "If you did not request this account, please contact DKS Bank support immediately."
+                + "</p>"
+                + "</td></tr>"
+
+                // Footer
+                + "<tr><td style=\"background:#f3f8f5;padding:18px 32px;text-align:center;\">"
+                + "<span style=\"color:#5a6b63;font-size:12px;\">&copy; DKS Bank. This is an automated message, please do not reply.</span>"
+                + "</td></tr>"
+
+                + "</table></td></tr></table>"
+                + "</body></html>";
+    }
+
+    private String buildOnlineBankingActivatedEmailHtml(String fullName,
+                                                          String customerId,
+                                                          String temporaryPassword,
+                                                          String loginUrl) {
+        String name = escapeHtml(isBlank(fullName) ? "Customer" : fullName);
+        String custId = escapeHtml(customerId);
+        String tempPwd = escapeHtml(temporaryPassword);
+        String loginLink = escapeHtml(loginUrl);
+
+        return "<!DOCTYPE html>"
+                + "<html><head><meta charset=\"UTF-8\"></head>"
+                + "<body style=\"margin:0;padding:0;background:#f2f6f4;font-family:'Segoe UI',Arial,sans-serif;\">"
+                + "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#f2f6f4;padding:32px 0;\">"
+                + "<tr><td align=\"center\">"
+                + "<table role=\"presentation\" width=\"480\" cellpadding=\"0\" cellspacing=\"0\" "
+                + "style=\"background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 24px rgba(15,23,42,0.08);\">"
+
+                + "<tr><td style=\"background:#0f8a4c;padding:24px 32px;text-align:center;\">"
+                + "<span style=\"color:#ffffff;font-size:20px;font-weight:700;letter-spacing:0.5px;\">DKS Bank</span>"
+                + "</td></tr>"
+
+                + "<tr><td style=\"padding:32px;\">"
+                + "<p style=\"margin:0 0 16px;color:#0d3b2e;font-size:16px;\">Dear <strong>" + name + "</strong>,</p>"
+                + "<p style=\"margin:0 0 20px;color:#3f4b46;font-size:14px;line-height:1.6;\">"
+                + "Your online banking service has been activated by DKS Bank Admin. Here are your login details:"
+                + "</p>"
+
+                + "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" "
+                + "style=\"background:#f3f8f5;border:1px solid #dcece3;border-radius:12px;\">"
+                + detailRow("Customer ID", custId, false)
+                + detailRow("Temporary Password", tempPwd, true)
+                + "</table>"
+
+                + "<p style=\"margin:24px 0 16px;color:#3f4b46;font-size:14px;line-height:1.6;\">"
+                + "Please login and change your password immediately."
+                + "</p>"
+
+                + "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:0 auto;\">"
+                + "<tr><td style=\"border-radius:10px;background:#16a34a;\">"
+                + "<a href=\"" + loginLink + "\" "
+                + "style=\"display:inline-block;padding:14px 32px;color:#ffffff;font-size:14px;font-weight:700;"
+                + "text-decoration:none;border-radius:10px;\">Login to Online Banking</a>"
+                + "</td></tr></table>"
+
+                + "<p style=\"margin:28px 0 0;color:#8a958f;font-size:12px;line-height:1.6;\">"
+                + "For your security, DKS Bank will never ask for your password or OTP over email or phone. "
+                + "If you did not request this activation, please contact DKS Bank support immediately."
+                + "</p>"
+                + "</td></tr>"
+
+                + "<tr><td style=\"background:#f3f8f5;padding:18px 32px;text-align:center;\">"
+                + "<span style=\"color:#5a6b63;font-size:12px;\">&copy; DKS Bank. This is an automated message, please do not reply.</span>"
+                + "</td></tr>"
+
+                + "</table></td></tr></table>"
+                + "</body></html>";
+    }
+
+    private String detailRow(String label, String value, boolean withTopBorder) {
+        String border = withTopBorder ? "border-top:1px solid #dcece3;" : "";
+
+        return "<tr>"
+                + "<td style=\"padding:12px 18px;color:#5a6b63;font-size:13px;" + border + "\">" + label + "</td>"
+                + "<td style=\"padding:12px 18px;color:#0d3b2e;font-size:14px;font-weight:700;text-align:right;" + border + "\">"
+                + value + "</td>"
+                + "</tr>";
+    }
+
+    private String escapeHtml(String value) {
+        if (value == null) {
+            return "";
+        }
+
+        return value
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
+    }
+
     private Properties loadFallbackProperties() {
         Properties props = new Properties();
 
@@ -216,10 +430,6 @@ public class EmailService {
         return value == null || value.trim().isEmpty();
     }
 
-    /**
-     * Simple success/failure result so callers never have to catch a
-     * mail exception themselves - EmailService already did.
-     */
     public static class EmailResult {
 
         private final boolean success;

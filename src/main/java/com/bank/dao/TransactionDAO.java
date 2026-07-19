@@ -11,6 +11,45 @@ import java.util.List;
 
 public class TransactionDAO {
 
+    /**
+     * Records the initial CREDIT ledger entry for a newly opened
+     * account (customer self-service "Open Account" flow, after a
+     * successful UPI payment simulation - see
+     * com.bank.controller.payment.ProcessUpiPaymentServlet).
+     *
+     * This does NOT touch accounts.balance - the opening balance is
+     * already set directly on the accounts row at account-creation
+     * time (UserDAO's INSERT ... VALUES (..., initialDeposit)). This
+     * method only writes the corresponding transaction history entry,
+     * so the deposit shows up in the customer's Transaction History /
+     * Mini Statement like any other transaction.
+     */
+    public boolean recordInitialDeposit(String accountNumber, double amount) {
+
+        String sql = "INSERT INTO transactions(sender_account, receiver_account, amount, transaction_type, status) "
+                + "VALUES (NULL, ?, ?, ?, ?)";
+
+        try (Connection con = DBConnection.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            if (con == null) {
+                System.out.println("Database connection failed.");
+                return false;
+            }
+
+            ps.setString(1, accountNumber);
+            ps.setDouble(2, amount);
+            ps.setString(3, "Initial Deposit");
+            ps.setString(4, "Success");
+
+            return ps.executeUpdate() > 0;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
     public boolean transferMoney(String senderAccount, String receiverAccount, double amount) {
 
         boolean status = false;

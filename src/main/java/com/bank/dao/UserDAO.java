@@ -131,6 +131,20 @@ public class UserDAO {
         }
     }
 
+    /**
+     * Publicly exposed wrapper around the same Customer ID
+     * generation/uniqueness logic already used internally by
+     * openBankAccount()/openBankAccountByAdmin(), so other admin flows
+     * (AdminDAO.addAdminUser) can reuse it instead of duplicating the
+     * generation logic. Purely additive - does not change any existing
+     * behavior of this class.
+     */
+    public String generateUniqueCustomerId() throws Exception {
+        try (Connection con = DBConnection.getConnection()) {
+            return generateUniqueCustomerId(con);
+        }
+    }
+
     public RegistrationInfo getRegistrationInfoByCustomerId(String customerId) {
         RegistrationInfo info = null;
 
@@ -194,7 +208,7 @@ public class UserDAO {
         try (Connection con = DBConnection.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
 
-            ps.setString(1, password.trim());
+            ps.setString(1, PasswordUtil.process(password.trim()));
             ps.setString(2, customerId.trim());
 
             success = ps.executeUpdate() > 0;
@@ -216,6 +230,9 @@ public class UserDAO {
         String cleanLoginId = loginId.trim();
         String cleanPassword = password.trim();
 
+        // No longer compares password in SQL - fetched by identifier
+        // only, then verified in Java via PasswordUtil.verify() so it
+        // works for both BCrypt hashes and legacy plain-text rows.
         String sql = """
                 SELECT *
                 FROM users
@@ -223,7 +240,6 @@ public class UserDAO {
                         TRIM(customer_id) = ?
                         OR LOWER(TRIM(email)) = LOWER(?)
                       )
-                  AND TRIM(password) = ?
                 LIMIT 1
                 """;
 
@@ -232,16 +248,28 @@ public class UserDAO {
 
             ps.setString(1, cleanLoginId);
             ps.setString(2, cleanLoginId);
-            ps.setString(3, cleanPassword);
 
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    user = mapUser(rs);
+                    User candidate = mapUser(rs);
 
-                    if ("USER".equalsIgnoreCase(user.getRole())
-                            && !user.isOnlineBankingEnabled()) {
+                    if (!PasswordUtil.verify(cleanPassword, candidate.getPassword())) {
                         return null;
                     }
+
+                    if ("USER".equalsIgnoreCase(candidate.getRole())
+                            && !candidate.isOnlineBankingEnabled()) {
+                        return null;
+                    }
+
+                    // Legacy plain-text row that just verified successfully -
+                    // transparently upgrade it to a real BCrypt hash so every
+                    // future login for this user uses BCrypt.
+                    if (!PasswordUtil.isBcryptHash(candidate.getPassword())) {
+                        upgradeToBcryptHash(candidate.getUserId(), cleanPassword);
+                    }
+
+                    user = candidate;
                 }
             }
 
@@ -252,30 +280,63 @@ public class UserDAO {
         return user;
     }
 
-    public boolean changePassword(int userId, String currentPassword, String newPassword) {
-        boolean success = false;
-
-        String sql = """
-                UPDATE users
-                SET password = ?
-                WHERE user_id = ?
-                  AND TRIM(password) = ?
-                """;
+    /**
+     * Migration helper: rewrites a legacy plain-text password to a
+     * BCrypt hash after that plain-text password has just been
+     * verified successfully in loginUser(). Never called with an
+     * unverified password.
+     */
+    private void upgradeToBcryptHash(int userId, String verifiedPlainPassword) {
+        String sql = "UPDATE users SET password = ? WHERE user_id = ?";
 
         try (Connection con = DBConnection.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
 
-            ps.setString(1, newPassword.trim());
+            ps.setString(1, PasswordUtil.process(verifiedPlainPassword));
             ps.setInt(2, userId);
-            ps.setString(3, currentPassword.trim());
+            ps.executeUpdate();
 
-            success = ps.executeUpdate() > 0;
+        } catch (Exception e) {
+            // Non-fatal: login already succeeded on the legacy password;
+            // it will simply be attempted again next time.
+            e.printStackTrace();
+        }
+    }
+
+    public boolean changePassword(int userId, String currentPassword, String newPassword) {
+        String selectSql = "SELECT password FROM users WHERE user_id = ?";
+        String updateSql = "UPDATE users SET password = ? WHERE user_id = ?";
+
+        try (Connection con = DBConnection.getConnection()) {
+
+            String storedPassword = null;
+
+            try (PreparedStatement ps = con.prepareStatement(selectSql)) {
+                ps.setInt(1, userId);
+
+                try (ResultSet rs = ps.executeQuery()) {
+                    if (rs.next()) {
+                        storedPassword = rs.getString("password");
+                    }
+                }
+            }
+
+            if (!PasswordUtil.verify(currentPassword.trim(), storedPassword)) {
+                return false;
+            }
+
+            try (PreparedStatement ps = con.prepareStatement(updateSql)) {
+                ps.setString(1, PasswordUtil.process(newPassword.trim()));
+                ps.setInt(2, userId);
+
+                return ps.executeUpdate() > 0;
+            }
 
         } catch (Exception e) {
             e.printStackTrace();
         }
 
-        return success;
+        return false;
     }
 
     /**
@@ -284,12 +345,8 @@ public class UserDAO {
      * customer does not know their current password, so it cannot be
      * verified the way changePassword() does.
      *
-     * Stores the password using the same plain storage format the rest
-     * of the project currently uses (see activateOnlineBanking() /
-     * changePassword() / loginUser()) so login keeps working unchanged.
-     * The actual write goes through PasswordUtil.process(), so
-     * switching to real hashing later only requires changing that one
-     * method, not this query.
+     * Stores the password as a BCrypt hash via PasswordUtil.process(),
+     * same as every other password-storing method in this class.
      */
     public boolean resetPassword(String email, String newPassword) {
         boolean success = false;

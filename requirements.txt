@@ -1,23 +1,87 @@
-# ==========================================
-# Online Banking System - System Requirements
-# ==========================================
 
-# 1. Core Runtime Environment
-Java SE Development Kit (JDK) >= 17
-Apache Tomcat Server >= 10.1.0
+---
 
-# 2. Database Server
-MySQL Server >= 8.0 (Or XAMPP with MySQL module)
+## `requirements.txt`
 
-# 3. Build & Dependency Management
-Apache Maven >= 3.8.0
+```txt
+# =====================================
+# Online Banking System Requirements
+# =====================================
 
-# 4. Required Dependencies (Managed automatically by Maven pom.xml)
-jakarta.servlet-api (6.0.0)
-jakarta.servlet.jsp-api (3.1.1)
-jakarta.servlet.jsp.jstl (3.0.1)
-mysql-connector-j (8.4.0)
-openpdf (1.3.39)
+# Java Environment
+Java >= 17
 
-# 5. IDE (Recommended)
-Eclipse IDE for Enterprise Java and Web Developers
+# Application Server
+Apache Tomcat >= 10.1
+
+# Build Tool
+Apache Maven >= 3.9
+
+
+# =====================================
+# Backend Dependencies
+# =====================================
+
+Jakarta Servlet API 6.x
+Jakarta JSP API
+JDBC API
+
+
+# =====================================
+# Database
+# =====================================
+
+MySQL >= 8.0
+TiDB Cloud Compatible
+
+
+# =====================================
+# Security
+# =====================================
+
+jBCrypt
+
+
+# =====================================
+# Email Service
+# =====================================
+
+Jakarta Mail API
+
+
+# =====================================
+# PDF Generation
+# =====================================
+
+OpenPDF
+
+
+# =====================================
+# Frontend
+# =====================================
+
+HTML5
+CSS3
+JavaScript
+Bootstrap
+
+
+# =====================================
+# Development Tools
+# =====================================
+
+Git
+GitHub
+Eclipse IDE / IntelliJ IDEA
+
+
+# =====================================
+# Environment Variables
+# =====================================
+
+DB_URL
+DB_USERNAME
+DB_PASSWORD
+
+EMAIL_USERNAME
+EMAIL_PASSWORD

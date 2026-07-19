@@ -1,11 +1,11 @@
 package com.bank.controller.account;
 
 import com.bank.dao.OtpDAO;
-import com.bank.dao.UserDAO;
-import com.bank.model.AccountOpenResult;
-import com.bank.util.AuditLogger;
+import com.bank.dao.PaymentDAO;
 
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
@@ -18,13 +18,15 @@ public class OpenAccountServlet extends HttpServlet {
 
     private static final long serialVersionUID = 1L;
 
+    private static final String VIEW = "/WEB-INF/views/verification/openAccount.jsp";
+
     private final OtpDAO otpDAO = new OtpDAO();
-    private final UserDAO userDAO = new UserDAO();
+    private final PaymentDAO paymentDAO = new PaymentDAO();
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        request.getRequestDispatcher("openAccount.jsp").forward(request, response);
+        request.getRequestDispatcher(VIEW).forward(request, response);
     }
 
     @Override
@@ -49,21 +51,21 @@ public class OpenAccountServlet extends HttpServlet {
                     || isEmpty(accountType) || isEmpty(initialDepositStr)) {
 
                 request.setAttribute("error", "All fields are required.");
-                request.getRequestDispatcher("openAccount.jsp").forward(request, response);
+                request.getRequestDispatcher(VIEW).forward(request, response);
                 return;
             }
 
             if (!phone.matches("[0-9]{10}")) {
                 request.setAttribute("error", "Phone number must be 10 digits.");
-                request.getRequestDispatcher("openAccount.jsp").forward(request, response);
+                request.getRequestDispatcher(VIEW).forward(request, response);
                 return;
             }
 
             double initialDeposit = Double.parseDouble(initialDepositStr);
 
             if (initialDeposit < 500) {
-                request.setAttribute("error", "Initial deposit must be at least ₹500.");
-                request.getRequestDispatcher("openAccount.jsp").forward(request, response);
+                request.setAttribute("error", "Initial deposit must be at least \u20B9500.");
+                request.getRequestDispatcher(VIEW).forward(request, response);
                 return;
             }
 
@@ -81,37 +83,36 @@ public class OpenAccountServlet extends HttpServlet {
 
             if (isEmpty(verificationToken) || !otpDAO.isEmailVerified(verificationToken.trim(), email.trim())) {
                 request.setAttribute("error", "Please verify your email before creating an account.");
-                request.getRequestDispatcher("openAccount.jsp").forward(request, response);
+                request.getRequestDispatcher(VIEW).forward(request, response);
                 return;
             }
 
-            AccountOpenResult result = userDAO.openBankAccount(
-                    firstName, lastName, dob, address, email, phone, accountType, initialDeposit
+            // ------------------------------------------------------------
+            // Account creation itself is deferred until after payment.
+            // We only create a PENDING payment record here (a snapshot
+            // of the registration, keyed by a generated request_id) and
+            // send the browser to the payment simulation page. The
+            // account is only actually created in
+            // ProcessUpiPaymentServlet, after the simulated payment
+            // succeeds - see UserDAO.openBankAccount() call there.
+            // ------------------------------------------------------------
+
+            String requestId = paymentDAO.createPendingPayment(
+                    firstName.trim(), lastName.trim(), dob.trim(), address.trim(),
+                    email.trim(), phone.trim(), accountType.trim(), initialDeposit
             );
 
-            if (result.isSuccess()) {
-                request.setAttribute("success", result.getMessage());
-                request.setAttribute("customerId", result.getCustomerId());
-                request.setAttribute("accountNumber", result.getAccountNumber());
-                request.setAttribute("ifscCode", result.getIfscCode());
-
-                AuditLogger.logByIdentifier(result.getCustomerId(), firstName + " " + lastName,
-                        "OPEN_ACCOUNT", "New account opened: " + result.getAccountNumber()
-                                + " (Customer ID " + result.getCustomerId() + ")");
-            } else {
-                request.setAttribute("error", result.getMessage());
-            }
-
-            request.getRequestDispatcher("openAccount.jsp").forward(request, response);
+            response.sendRedirect(request.getContextPath()
+                    + "/payment/demo?id=" + URLEncoder.encode(requestId, StandardCharsets.UTF_8));
 
         } catch (NumberFormatException e) {
             request.setAttribute("error", "Invalid initial deposit amount.");
-            request.getRequestDispatcher("openAccount.jsp").forward(request, response);
+            request.getRequestDispatcher(VIEW).forward(request, response);
 
         } catch (Exception e) {
             e.printStackTrace();
-            request.setAttribute("error", "Something went wrong while creating the account. Please check your details and try again.");
-            request.getRequestDispatcher("openAccount.jsp").forward(request, response);
+            request.setAttribute("error", "Something went wrong while starting payment. Please check your details and try again.");
+            request.getRequestDispatcher(VIEW).forward(request, response);
         }
     }
 

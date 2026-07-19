@@ -31,7 +31,7 @@ public class TransactionHistoryServlet extends HttpServlet {
         HttpSession session = request.getSession(false);
 
         if (session == null || session.getAttribute("user") == null) {
-            response.sendRedirect("login.jsp");
+            response.sendRedirect(request.getContextPath() + "/login");
             return;
         }
 
@@ -41,7 +41,7 @@ public class TransactionHistoryServlet extends HttpServlet {
 
         if (account == null) {
             request.setAttribute("error", "Account not found.");
-            request.getRequestDispatcher("error.jsp").forward(request, response);
+            request.getRequestDispatcher("/error.jsp").forward(request, response);
             return;
         }
 
@@ -50,6 +50,6 @@ public class TransactionHistoryServlet extends HttpServlet {
         request.setAttribute("account", account);
         request.setAttribute("txList", txList);
 
-        request.getRequestDispatcher("history.jsp").forward(request, response);
+        request.getRequestDispatcher("/WEB-INF/views/transaction/history.jsp").forward(request, response);
     }
 }

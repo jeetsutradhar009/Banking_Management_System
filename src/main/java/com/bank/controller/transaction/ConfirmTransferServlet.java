@@ -30,7 +30,7 @@ public class ConfirmTransferServlet extends HttpServlet {
         HttpSession session = request.getSession(false);
 
         if (session == null || session.getAttribute("user") == null) {
-            response.sendRedirect("login.jsp");
+            response.sendRedirect(request.getContextPath() + "/login");
             return;
         }
 
@@ -44,7 +44,7 @@ public class ConfirmTransferServlet extends HttpServlet {
 
         if (sender == null) {
             request.setAttribute("error", "Sender account not found.");
-            request.getRequestDispatcher("transfer.jsp").forward(request, response);
+            request.getRequestDispatcher("/WEB-INF/views/transaction/transfer.jsp").forward(request, response);
             return;
         }
 
@@ -63,10 +63,10 @@ public class ConfirmTransferServlet extends HttpServlet {
                     "Transferred \u20B9" + amount + " from " + sender.getAccountNumber()
                             + " to " + receiverAccount + " (" + receiverName + ")");
 
-            request.getRequestDispatcher("success.jsp").forward(request, response);
+            request.getRequestDispatcher("/WEB-INF/views/common/success.jsp").forward(request, response);
         } else {
             request.setAttribute("error", "Transfer failed.");
-            request.getRequestDispatcher("transfer.jsp").forward(request, response);
+            request.getRequestDispatcher("/WEB-INF/views/transaction/transfer.jsp").forward(request, response);
         }
     }
 }

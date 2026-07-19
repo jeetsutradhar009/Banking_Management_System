@@ -8,6 +8,13 @@ public class AccountOpenResult {
     private String accountNumber;
     private String ifscCode;
 
+    // Only set for admin-created accounts (UserDAO.openBankAccountByAdmin),
+    // where a default login password is auto-generated. Left null for the
+    // customer self-service flow (UserDAO.openBankAccount), which never
+    // sets a password at account-opening time - the customer sets their
+    // own password later via RegisterServlet.
+    private String defaultPassword;
+
     public AccountOpenResult() {
     }
 
@@ -66,5 +73,13 @@ public class AccountOpenResult {
 
     public void setIfscCode(String ifscCode) {
         this.ifscCode = ifscCode;
+    }
+
+    public String getDefaultPassword() {
+        return defaultPassword;
+    }
+
+    public void setDefaultPassword(String defaultPassword) {
+        this.defaultPassword = defaultPassword;
     }
 }

@@ -33,14 +33,14 @@ public class AdminServlet extends HttpServlet {
         HttpSession session = request.getSession(false);
 
         if (session == null || session.getAttribute("user") == null) {
-            response.sendRedirect(request.getContextPath() + "/login.jsp");
+            response.sendRedirect(request.getContextPath() + "/login");
             return;
         }
 
         User admin = (User) session.getAttribute("user");
 
         if (!"ADMIN".equalsIgnoreCase(admin.getRole())) {
-            response.sendRedirect(request.getContextPath() + "/login.jsp");
+            response.sendRedirect(request.getContextPath() + "/login");
             return;
         }
 
@@ -60,6 +60,6 @@ public class AdminServlet extends HttpServlet {
         request.setAttribute("recentAccounts", recentAccounts);
         request.setAttribute("recentTransactions", recentTransactions);
 
-        request.getRequestDispatcher("/admin.jsp").forward(request, response);
+        request.getRequestDispatcher("/WEB-INF/views/admin/admin.jsp").forward(request, response);
     }
 }

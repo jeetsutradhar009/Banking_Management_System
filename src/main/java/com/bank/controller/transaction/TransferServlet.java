@@ -27,7 +27,7 @@ public class TransferServlet extends HttpServlet {
         HttpSession session = request.getSession(false);
 
         if (session == null || session.getAttribute("user") == null) {
-            response.sendRedirect(request.getContextPath() + "/login.jsp");
+            response.sendRedirect(request.getContextPath() + "/login");
             return;
         }
 
@@ -42,7 +42,7 @@ public class TransferServlet extends HttpServlet {
             request.setAttribute("error", "Your account not found.");
         }
 
-        request.getRequestDispatcher("transfer.jsp").forward(request, response);
+        request.getRequestDispatcher("/WEB-INF/views/transaction/transfer.jsp").forward(request, response);
     }
 
     @Override
@@ -54,7 +54,7 @@ public class TransferServlet extends HttpServlet {
         HttpSession session = request.getSession(false);
 
         if (session == null || session.getAttribute("user") == null) {
-            response.sendRedirect(request.getContextPath() + "/login.jsp");
+            response.sendRedirect(request.getContextPath() + "/login");
             return;
         }
 
@@ -67,7 +67,7 @@ public class TransferServlet extends HttpServlet {
 
         if (senderAccount == null) {
             request.setAttribute("error", "Your account not found.");
-            request.getRequestDispatcher("transfer.jsp").forward(request, response);
+            request.getRequestDispatcher("/WEB-INF/views/transaction/transfer.jsp").forward(request, response);
             return;
         }
 
@@ -79,7 +79,7 @@ public class TransferServlet extends HttpServlet {
                     || amountStr == null || amountStr.trim().isEmpty()) {
 
                 request.setAttribute("error", "Receiver account and amount are required.");
-                request.getRequestDispatcher("transfer.jsp").forward(request, response);
+                request.getRequestDispatcher("/WEB-INF/views/transaction/transfer.jsp").forward(request, response);
                 return;
             }
 
@@ -89,13 +89,13 @@ public class TransferServlet extends HttpServlet {
 
             if (amount <= 0) {
                 request.setAttribute("error", "Amount must be greater than 0.");
-                request.getRequestDispatcher("transfer.jsp").forward(request, response);
+                request.getRequestDispatcher("/WEB-INF/views/transaction/transfer.jsp").forward(request, response);
                 return;
             }
 
             if (senderAccount.getAccountNumber().equals(receiverAccount)) {
                 request.setAttribute("error", "You cannot transfer money to your own account.");
-                request.getRequestDispatcher("transfer.jsp").forward(request, response);
+                request.getRequestDispatcher("/WEB-INF/views/transaction/transfer.jsp").forward(request, response);
                 return;
             }
 
@@ -103,7 +103,7 @@ public class TransferServlet extends HttpServlet {
 
             if (receiver == null) {
                 request.setAttribute("error", "Receiver account not found.");
-                request.getRequestDispatcher("transfer.jsp").forward(request, response);
+                request.getRequestDispatcher("/WEB-INF/views/transaction/transfer.jsp").forward(request, response);
                 return;
             }
 
@@ -115,7 +115,7 @@ public class TransferServlet extends HttpServlet {
 
             if (senderAccount.getBalance() < amount) {
                 request.setAttribute("error", "Insufficient balance.");
-                request.getRequestDispatcher("transfer.jsp").forward(request, response);
+                request.getRequestDispatcher("/WEB-INF/views/transaction/transfer.jsp").forward(request, response);
                 return;
             }
 
@@ -123,16 +123,16 @@ public class TransferServlet extends HttpServlet {
             request.setAttribute("receiverName", receiverName);
             request.setAttribute("amount", amount);
 
-            request.getRequestDispatcher("confirmTransfer.jsp").forward(request, response);
+            request.getRequestDispatcher("/WEB-INF/views/transaction/confirmTransfer.jsp").forward(request, response);
 
         } catch (NumberFormatException e) {
             request.setAttribute("error", "Invalid amount.");
-            request.getRequestDispatcher("transfer.jsp").forward(request, response);
+            request.getRequestDispatcher("/WEB-INF/views/transaction/transfer.jsp").forward(request, response);
 
         } catch (Exception e) {
             e.printStackTrace();
             request.setAttribute("error", "Something went wrong: " + e.getMessage());
-            request.getRequestDispatcher("transfer.jsp").forward(request, response);
+            request.getRequestDispatcher("/WEB-INF/views/transaction/transfer.jsp").forward(request, response);
         }
     }
 }

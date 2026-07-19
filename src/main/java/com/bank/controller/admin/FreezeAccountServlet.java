@@ -28,7 +28,7 @@ public class FreezeAccountServlet extends HttpServlet {
         }
 
         request.setAttribute("accounts", adminDAO.getAllAccounts());
-        request.getRequestDispatcher("/freeze-account.jsp").forward(request, response);
+        request.getRequestDispatcher("/WEB-INF/views/admin/freeze-account.jsp").forward(request, response);
     }
 
     @Override

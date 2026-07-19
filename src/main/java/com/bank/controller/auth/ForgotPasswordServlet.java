@@ -23,6 +23,8 @@ public class ForgotPasswordServlet extends HttpServlet {
 
     private static final long serialVersionUID = 1L;
 
+    private static final String VIEW = "/WEB-INF/views/auth/forgotPassword.jsp";
+
     private static final int TOKEN_VALIDITY_MINUTES = resolveTokenValidityMinutes();
     private static final int RESET_COOLDOWN_SECONDS = 60;
 
@@ -38,7 +40,7 @@ public class ForgotPasswordServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        request.getRequestDispatcher("forgotPassword.jsp").forward(request, response);
+        request.getRequestDispatcher(VIEW).forward(request, response);
     }
 
     @Override
@@ -52,7 +54,7 @@ public class ForgotPasswordServlet extends HttpServlet {
         try {
             if (email == null || email.trim().isEmpty()) {
                 request.setAttribute("error", "Please enter your registered email address.");
-                request.getRequestDispatcher("forgotPassword.jsp").forward(request, response);
+                request.getRequestDispatcher(VIEW).forward(request, response);
                 return;
             }
 
@@ -63,7 +65,7 @@ public class ForgotPasswordServlet extends HttpServlet {
                 // safe to report distinctly, so we skip a wasted DB call
                 // for something that can never match a stored email.
                 request.setAttribute("error", "Please enter a valid email address.");
-                request.getRequestDispatcher("forgotPassword.jsp").forward(request, response);
+                request.getRequestDispatcher(VIEW).forward(request, response);
                 return;
             }
 
@@ -79,12 +81,12 @@ public class ForgotPasswordServlet extends HttpServlet {
             // happened internally - never reveal account state
             // through this response.
             request.setAttribute("success", GENERIC_SUCCESS_MESSAGE);
-            request.getRequestDispatcher("forgotPassword.jsp").forward(request, response);
+            request.getRequestDispatcher(VIEW).forward(request, response);
 
         } catch (Exception e) {
             logError("Unexpected error while processing forgot-password request", e);
             request.setAttribute("success", GENERIC_SUCCESS_MESSAGE);
-            request.getRequestDispatcher("forgotPassword.jsp").forward(request, response);
+            request.getRequestDispatcher(VIEW).forward(request, response);
         }
     }
 

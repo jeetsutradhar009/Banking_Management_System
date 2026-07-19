@@ -22,6 +22,9 @@ public class VerifyOtpServlet extends HttpServlet {
 
     private static final long serialVersionUID = 1L;
 
+    private static final String VIEW_OPEN_ACCOUNT = "/WEB-INF/views/verification/openAccount.jsp";
+    private static final String VIEW_VERIFY_OTP = "/WEB-INF/views/verification/verifyOtp.jsp";
+
     private final OtpDAO otpDAO = new OtpDAO();
     private final UserDAO userDAO = new UserDAO();
 
@@ -36,7 +39,7 @@ public class VerifyOtpServlet extends HttpServlet {
 
         if (isEmpty(token)) {
             request.setAttribute("error", "Invalid verification link. Please open your account again.");
-            request.getRequestDispatcher("openAccount.jsp").forward(request, response);
+            request.getRequestDispatcher(VIEW_OPEN_ACCOUNT).forward(request, response);
             return;
         }
 
@@ -44,13 +47,13 @@ public class VerifyOtpServlet extends HttpServlet {
 
         if (otpVerification == null) {
             request.setAttribute("error", "Invalid or expired verification link. Please open your account again.");
-            request.getRequestDispatcher("openAccount.jsp").forward(request, response);
+            request.getRequestDispatcher(VIEW_OPEN_ACCOUNT).forward(request, response);
             return;
         }
 
         request.setAttribute("token", token.trim());
         request.setAttribute("email", otpVerification.getEmail());
-        request.getRequestDispatcher("verifyOtp.jsp").forward(request, response);
+        request.getRequestDispatcher(VIEW_VERIFY_OTP).forward(request, response);
     }
 
     /**
@@ -70,7 +73,7 @@ public class VerifyOtpServlet extends HttpServlet {
         try {
             if (isEmpty(token)) {
                 request.setAttribute("error", "Invalid verification link. Please open your account again.");
-                request.getRequestDispatcher("openAccount.jsp").forward(request, response);
+                request.getRequestDispatcher(VIEW_OPEN_ACCOUNT).forward(request, response);
                 return;
             }
 
@@ -84,13 +87,13 @@ public class VerifyOtpServlet extends HttpServlet {
 
             if (otpVerification == null) {
                 request.setAttribute("error", "Invalid or expired verification link. Please open your account again.");
-                request.getRequestDispatcher("openAccount.jsp").forward(request, response);
+                request.getRequestDispatcher(VIEW_OPEN_ACCOUNT).forward(request, response);
                 return;
             }
 
             if (!"PENDING".equalsIgnoreCase(otpVerification.getStatus())) {
                 request.setAttribute("error", "This OTP has already been used or is no longer valid. Please open your account again.");
-                request.getRequestDispatcher("openAccount.jsp").forward(request, response);
+                request.getRequestDispatcher(VIEW_OPEN_ACCOUNT).forward(request, response);
                 return;
             }
 
@@ -162,12 +165,12 @@ public class VerifyOtpServlet extends HttpServlet {
                 request.setAttribute("error", result.getMessage());
             }
 
-            request.getRequestDispatcher("openAccount.jsp").forward(request, response);
+            request.getRequestDispatcher(VIEW_OPEN_ACCOUNT).forward(request, response);
 
         } catch (Exception e) {
             e.printStackTrace();
             request.setAttribute("error", "Something went wrong while verifying your OTP. Please try again.");
-            request.getRequestDispatcher("openAccount.jsp").forward(request, response);
+            request.getRequestDispatcher(VIEW_OPEN_ACCOUNT).forward(request, response);
         }
     }
 
@@ -182,7 +185,7 @@ public class VerifyOtpServlet extends HttpServlet {
             request.setAttribute("email", otpVerification.getEmail());
         }
 
-        request.getRequestDispatcher("verifyOtp.jsp").forward(request, response);
+        request.getRequestDispatcher(VIEW_VERIFY_OTP).forward(request, response);
     }
 
     private boolean isEmpty(String value) {

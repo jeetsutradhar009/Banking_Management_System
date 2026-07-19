@@ -16,6 +16,8 @@ import java.io.IOException;
 @WebServlet("/login")
 public class LoginServlet extends HttpServlet {
 
+    private static final String VIEW = "/WEB-INF/views/auth/login.jsp";
+
     private UserDAO userDAO;
 
     @Override
@@ -26,7 +28,7 @@ public class LoginServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        request.getRequestDispatcher("login.jsp").forward(request, response);
+        request.getRequestDispatcher(VIEW).forward(request, response);
     }
 
     @Override
@@ -48,7 +50,7 @@ public class LoginServlet extends HttpServlet {
 
             request.setAttribute("error", "Please enter login ID and password.");
             request.setAttribute("selectedLoginType", loginType);
-            request.getRequestDispatcher("login.jsp").forward(request, response);
+            request.getRequestDispatcher(VIEW).forward(request, response);
             return;
         }
 
@@ -57,7 +59,7 @@ public class LoginServlet extends HttpServlet {
         if (user == null) {
             request.setAttribute("error", "Invalid login ID or password.");
             request.setAttribute("selectedLoginType", loginType);
-            request.getRequestDispatcher("login.jsp").forward(request, response);
+            request.getRequestDispatcher(VIEW).forward(request, response);
             return;
         }
 
@@ -68,12 +70,13 @@ public class LoginServlet extends HttpServlet {
             if (!"ADMIN".equalsIgnoreCase(role)) {
                 request.setAttribute("error", "This account is not an admin account.");
                 request.setAttribute("selectedLoginType", loginType);
-                request.getRequestDispatcher("login.jsp").forward(request, response);
+                request.getRequestDispatcher(VIEW).forward(request, response);
                 return;
             }
 
             HttpSession session = request.getSession();
             session.setAttribute("user", user);
+            session.setAttribute("loginTime", new java.util.Date());
 
             AuditLogger.log(user, "LOGIN", "Admin logged in");
 
@@ -84,7 +87,7 @@ public class LoginServlet extends HttpServlet {
         if ("ADMIN".equalsIgnoreCase(role)) {
             request.setAttribute("error", "Please use Admin Login option.");
             request.setAttribute("selectedLoginType", loginType);
-            request.getRequestDispatcher("login.jsp").forward(request, response);
+            request.getRequestDispatcher(VIEW).forward(request, response);
             return;
         }
 
