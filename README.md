@@ -60,7 +60,7 @@ The app connects to the database purely through environment variables (see [Envi
 | Local Development | ![XAMPP](https://img.shields.io/badge/XAMPP-Local%20MySQL%20Server-FB7A24?style=flat-square&logo=xampp&logoColor=white) |
 | Build Tool | ![Maven](https://img.shields.io/badge/Maven-Build%20Tool-C71A36?style=flat-square&logo=apachemaven&logoColor=white) |
 | Security | ![BCrypt](https://img.shields.io/badge/jBCrypt-Password%20Hashing-6E4C13?style=flat-square) |
-| Email / OTP | ![Jakarta Mail](https://img.shields.io/badge/Jakarta%20Mail-Angus-D14836?style=flat-square) |
+| Email / OTP | ![Brevo](https://img.shields.io/badge/Brevo-Transactional%20Email%20API-0B996E?style=flat-square) (HTTPS API via `java.net.http.HttpClient`) |
 | PDF Generation | ![OpenPDF](https://img.shields.io/badge/OpenPDF-PDF%20Generation-0A7B83?style=flat-square) |
 | Front-End | ![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=flat-square&logo=html5&logoColor=white) ![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=flat-square&logo=css3&logoColor=white) ![JavaScript](https://img.shields.io/badge/JavaScript-AJAX-F7DF1E?style=flat-square&logo=javascript&logoColor=black) |
 | Containerization | ![Docker](https://img.shields.io/badge/Docker-Multi--Stage%20Build-2496ED?style=flat-square&logo=docker&logoColor=white) |
@@ -206,9 +206,16 @@ If `DatabaseSetup.java` fails for any reason (JDBC driver issue, incorrect envir
 
 **Admin Account Note:** the SQL fallback file does **not** automatically create an admin account. If you use only the SQL setup, manually insert the admin record using the commented template at the bottom of `database_setup.sql`.
 
-### 4. Configure Email (SMTP / OTP)
+### 4. Configure Email (Brevo API / OTP)
 
-Copy `src/main/resources/email.properties.example` to `email.properties` and fill in your real SMTP values, **or** set the equivalent `SMTP_*` environment variables (see below — environment variables always take priority over the properties file).
+Copy `src/main/resources/email.properties.example` to `email.properties` and fill in your real Brevo values, **or** set the equivalent environment variables (see below — environment variables always take priority over the properties file).
+
+Emails (OTP, password reset, account/activation notifications) are sent via [Brevo's](https://brevo.com) transactional email HTTPS API — not SMTP. This is a deliberate choice: several free-tier hosts (including Render's free web services) block outbound SMTP ports (25/465/587), but plain HTTPS calls on port 443 are never blocked. Only a single verified sender email is required — no custom domain purchase/verification needed, and emails can be sent to any recipient.
+
+1. Create a free account at [brevo.com](https://brevo.com).
+2. Under **Senders, Domains & Dedicated IPs**, add and verify your sending email address (a verification link is emailed to it).
+3. Under **SMTP & API → API Keys**, generate a new API key.
+4. Set `BREVO_API_KEY` to that key, and `EMAIL_FROM_ADDRESS` to the verified sender email (see Environment Variables below).
 
 After database and email are configured, run the application using **Apache Tomcat 10.1**, or build/run the included `Dockerfile`.
 
@@ -221,12 +228,9 @@ After database and email are configured, run the application using **Apache Tomc
 | `DB_URL` | JDBC connection string | `jdbc:mysql://host:4000/dks_banking?sslMode=VERIFY_IDENTITY` |
 | `DB_USERNAME` | Database username | `your_db_user` |
 | `DB_PASSWORD` | Database password | `••••••••` |
-| `SMTP_HOST` | SMTP server host | `smtp.gmail.com` |
-| `SMTP_PORT` | SMTP server port (STARTTLS) | `587` |
-| `SMTP_USERNAME` | SMTP login username | `your_bank_email@gmail.com` |
-| `SMTP_PASSWORD` | SMTP login password / app password | `••••••••••••••••` |
-| `SMTP_FROM_EMAIL` | "From" address shown to customers | `your_bank_email@gmail.com` |
-| `SMTP_FROM_NAME` | "From" display name (optional) | `DKS Bank` |
+| `BREVO_API_KEY` | Brevo transactional email API key | `xkeysib-••••••••••••••••` |
+| `EMAIL_FROM_ADDRESS` | Verified Brevo sender email | `your_bank_email@gmail.com` |
+| `EMAIL_FROM_NAME` | "From" display name (optional) | `DKS Bank` |
 | `PASSWORD_RESET_TOKEN_VALIDITY_MINUTES` | Reset token validity window (optional) | `10` |
 
 None of these have hardcoded fallbacks pointing at a real database or mailbox in production — local development only falls back to a plain `localhost` MySQL default (and to `email.properties`, if present) so the app can still boot without full configuration during early development.
