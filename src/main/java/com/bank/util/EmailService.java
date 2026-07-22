@@ -341,113 +341,52 @@ public class EmailService {
      * field and always uses the generic greeting. Validity minutes
      * remains a parameter (not hardcoded) so the displayed text always
      * matches whatever expiry the caller actually set in the database.
+     *
+     * Deliberately minimal HTML - no tables, no <style> blocks, no
+     * images, no buttons - just <p>/<b> tags, per requirement.
      */
     private String buildOtpEmailBody(String otpCode, int validityMinutes) {
         String otp = escapeHtml(otpCode);
         String minuteWord = (validityMinutes == 1) ? "minute" : "minutes";
 
-        return "<!DOCTYPE html>"
-                + "<html><head><meta charset=\"UTF-8\"></head>"
-                + "<body style=\"margin:0;padding:0;background:#f2f6f4;font-family:'Segoe UI',Arial,sans-serif;\">"
-                + "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#f2f6f4;padding:32px 0;\">"
-                + "<tr><td align=\"center\">"
-                + "<table role=\"presentation\" width=\"480\" cellpadding=\"0\" cellspacing=\"0\" "
-                + "style=\"background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 24px rgba(15,23,42,0.08);\">"
-
-                + "<tr><td style=\"background:#0f8a4c;padding:24px 32px;text-align:center;\">"
-                + "<span style=\"color:#ffffff;font-size:20px;font-weight:700;letter-spacing:0.5px;\">DKS Bank</span>"
-                + "</td></tr>"
-
-                + "<tr><td style=\"padding:32px;\">"
-                + "<p style=\"margin:0 0 16px;color:#0d3b2e;font-size:16px;\">Dear User,</p>"
-                + "<p style=\"margin:0 0 20px;color:#3f4b46;font-size:14px;line-height:1.6;\">"
-                + "Thank you for opening an account with DKS Bank. Your One-Time Password (OTP) for "
-                + "account opening verification is:"
-                + "</p>"
-
-                + "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:0 0 20px;\">"
-                + "<tr><td align=\"center\" style=\"background:#f3f8f5;border:1px solid #dcece3;border-radius:12px;padding:20px;\">"
-                + "<span style=\"display:inline-block;color:#0f8a4c;font-size:32px;font-weight:800;letter-spacing:8px;\">"
-                + otp + "</span>"
-                + "</td></tr></table>"
-
-                + "<p style=\"margin:0 0 8px;color:#3f4b46;font-size:14px;line-height:1.6;\">"
-                + "This OTP is valid for <strong>" + validityMinutes + " " + minuteWord + "</strong>."
-                + "</p>"
-                + "<p style=\"margin:0;color:#3f4b46;font-size:14px;line-height:1.6;\">"
-                + "Do not share this OTP with anyone, including DKS Bank staff."
-                + "</p>"
-
-                + "<p style=\"margin:28px 0 0;color:#8a958f;font-size:12px;line-height:1.6;\">"
-                + "If you did not request this, please ignore this email."
-                + "</p>"
-                + "</td></tr>"
-
-                + "<tr><td style=\"background:#f3f8f5;padding:18px 32px;text-align:center;\">"
-                + "<span style=\"color:#5a6b63;font-size:12px;\">&copy; DKS Bank. This is an automated message, please do not reply.</span>"
-                + "</td></tr>"
-
-                + "</table></td></tr></table>"
+        return "<html><body>"
+                + "<p>Dear <b>User</b>,</p>"
+                + "<p>Your email verification OTP is:</p>"
+                + "<p><b>" + otp + "</b></p>"
+                + "<p>This OTP is valid for <b>" + validityMinutes + " " + minuteWord + "</b>.</p>"
+                + "<p>If you did not request this verification, please ignore this email.</p>"
+                + "<p>Regards,<br>Online Banking System</p>"
                 + "</body></html>";
     }
 
     /**
      * Password reset email. fullName here already comes from the
      * database (ForgotPasswordServlet looks up the User row before
-     * calling this), so - unlike the OTP template above - it is safe
-     * and correct to display it. The reset link is rendered as a
-     * styled button rather than a raw URL. validityMinutes is no
-     * longer hardcoded - callers pass the actual window their token
-     * was created with (see the 4-argument sendPasswordResetEmail()
-     * overload), so this text can never drift out of sync with the
-     * real DB-enforced expiry.
+     * calling this), so it is safe and correct to display it.
+     * validityMinutes is not hardcoded - callers pass the actual
+     * window their token was created with (see the 4-argument
+     * sendPasswordResetEmail() overload), so this text can never
+     * drift out of sync with the real DB-enforced expiry.
+     *
+     * Deliberately minimal HTML - no tables, no <style> blocks, no
+     * images - just <p>/<b> tags plus one inline-styled anchor tag
+     * for the reset button, per requirement.
      */
     private String buildPasswordResetEmailBody(String fullName, String resetLink, int validityMinutes) {
         String name = escapeHtml(isBlank(fullName) ? "Customer" : fullName);
         String link = escapeHtml(resetLink);
         String minuteWord = (validityMinutes == 1) ? "minute" : "minutes";
 
-        return "<!DOCTYPE html>"
-                + "<html><head><meta charset=\"UTF-8\"></head>"
-                + "<body style=\"margin:0;padding:0;background:#f2f6f4;font-family:'Segoe UI',Arial,sans-serif;\">"
-                + "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#f2f6f4;padding:32px 0;\">"
-                + "<tr><td align=\"center\">"
-                + "<table role=\"presentation\" width=\"480\" cellpadding=\"0\" cellspacing=\"0\" "
-                + "style=\"background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 24px rgba(15,23,42,0.08);\">"
-
-                + "<tr><td style=\"background:#0f8a4c;padding:24px 32px;text-align:center;\">"
-                + "<span style=\"color:#ffffff;font-size:20px;font-weight:700;letter-spacing:0.5px;\">DKS Bank</span>"
-                + "</td></tr>"
-
-                + "<tr><td style=\"padding:32px;\">"
-                + "<p style=\"margin:0 0 16px;color:#0d3b2e;font-size:16px;\">Dear <b>" + name + "</b>,</p>"
-                + "<p style=\"margin:0 0 24px;color:#3f4b46;font-size:14px;line-height:1.6;\">"
-                + "We received a request to reset your online banking password. Click the button below "
-                + "to choose a new password:"
-                + "</p>"
-
-                + "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:0 auto 24px;\">"
-                + "<tr><td style=\"border-radius:10px;background:#16a34a;\">"
-                + "<a href=\"" + link + "\" "
-                + "style=\"display:inline-block;padding:14px 32px;color:#ffffff;font-size:14px;font-weight:700;"
-                + "text-decoration:none;border-radius:10px;\">Click Here To Reset Password</a>"
-                + "</td></tr></table>"
-
-                + "<p style=\"margin:0 0 8px;color:#3f4b46;font-size:14px;line-height:1.6;\">"
-                + "This link will expire after <strong>" + validityMinutes + " " + minuteWord + "</strong> and can be used only once."
-                + "</p>"
-
-                + "<p style=\"margin:28px 0 0;color:#8a958f;font-size:12px;line-height:1.6;\">"
-                + "If you did not request this, please ignore this email - your password will remain "
-                + "unchanged and no further action is needed."
-                + "</p>"
-                + "</td></tr>"
-
-                + "<tr><td style=\"background:#f3f8f5;padding:18px 32px;text-align:center;\">"
-                + "<span style=\"color:#5a6b63;font-size:12px;\">&copy; DKS Bank. This is an automated message, please do not reply.</span>"
-                + "</td></tr>"
-
-                + "</table></td></tr></table>"
+        return "<html><body>"
+                + "<p>Dear <b>" + name + "</b>,</p>"
+                + "<p>We received a request to reset your password.</p>"
+                + "<p>Click the button below to reset your password:</p>"
+                + "<p><a href=\"" + link + "\" "
+                + "style=\"display:inline-block;padding:12px 24px;background:#2563eb;color:#ffffff;"
+                + "text-decoration:none;border-radius:6px;font-weight:bold;\">Reset Password</a></p>"
+                + "<p>This link will expire after <b>" + validityMinutes + " " + minuteWord + "</b>.</p>"
+                + "<p>If you did not request this password reset, please ignore this email.</p>"
+                + "<p>Regards,<br>Online Banking System</p>"
                 + "</body></html>";
     }
 
