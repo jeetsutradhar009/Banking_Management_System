@@ -2,4 +2,6 @@
 .project
 .settings/
 target/
-src/main/resources/email.properties
+
+# Java resources
+**/email.properties

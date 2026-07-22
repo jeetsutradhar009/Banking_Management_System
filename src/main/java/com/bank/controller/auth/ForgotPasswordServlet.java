@@ -178,7 +178,7 @@ public class ForgotPasswordServlet extends HttpServlet {
      */
     private void sendResetEmail(String userEmail, String fullName, String customerId, String resetLink) {
         EmailService.EmailResult emailResult =
-                emailService.sendPasswordResetEmail(userEmail, fullName, resetLink);
+                emailService.sendPasswordResetEmail(userEmail, fullName, resetLink, TOKEN_VALIDITY_MINUTES);
 
         if (emailResult.isSuccess()) {
             AuditLogger.logByIdentifier(customerId, fullName,
@@ -234,8 +234,13 @@ public class ForgotPasswordServlet extends HttpServlet {
     /**
      * Reads the token validity window from an environment variable if
      * present (PASSWORD_RESET_TOKEN_VALIDITY_MINUTES), falling back to
-     * 10 minutes - same env-var-first, sane-default pattern already
-     * used by DBConnection/EmailService for configuration.
+     * 2 minutes - same env-var-first, sane-default pattern already
+     * used by DBConnection/EmailService for configuration. This value
+     * is passed directly into EmailService.sendPasswordResetEmail()'s
+     * 4-argument overload (see sendResetEmail() below), so the emailed
+     * expiry text always matches this actual value - changing this
+     * default or the env var automatically updates the email text too,
+     * no separate template edit required.
      */
     private static int resolveTokenValidityMinutes() {
         String configured = System.getenv("PASSWORD_RESET_TOKEN_VALIDITY_MINUTES");
@@ -251,7 +256,7 @@ public class ForgotPasswordServlet extends HttpServlet {
             }
         }
 
-        return 10;
+        return 2;
     }
 
     /**

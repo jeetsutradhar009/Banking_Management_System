@@ -34,7 +34,7 @@ public class ResendEmailOtpServlet extends HttpServlet {
 
     private static final long serialVersionUID = 1L;
 
-    private static final int OTP_VALIDITY_MINUTES = 5;
+    private static final int OTP_VALIDITY_MINUTES = 2;
     private static final int RESEND_COOLDOWN_SECONDS = 30;
 
     private final OtpDAO otpDAO = new OtpDAO();

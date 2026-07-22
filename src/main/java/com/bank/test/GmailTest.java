@@ -2,17 +2,17 @@ package com.bank.test;
 
 import com.bank.util.EmailService;
 
-public class TestEmail {
+public class GmailTest {
 
     public static void main(String[] args) {
 
-        EmailService emailService = new EmailService();
+        EmailService service = new EmailService();
 
         EmailService.EmailResult result =
-                emailService.sendOtpEmail(
-                        "dsutradhar815@gmail.com",
+                service.sendOtpEmail(
+                        "Enter_your_mail",
                         "Dipankar",
-                        "583921",
+                        "123456",
                         10
                 );
 

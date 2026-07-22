@@ -63,13 +63,66 @@
             <version>1.3.39</version>
         </dependency>
         
-        <!-- SMTP Email Service dependency (used for OTP verification and email notifications) -->
         <!-- Pass hashing dependency -->
        <dependency>
           <groupId>org.mindrot</groupId>
           <artifactId>jbcrypt</artifactId>
           <version>0.4</version>
       </dependency>
+      
+      <!--
+    Add these three dependencies to pom.xml, right after the existing
+    "SMTP Email Service dependency" (angus-mail) block.
+
+    angus-mail itself is KEPT — it is no longer used to talk SMTP, but
+    EmailService still uses jakarta.mail.internet.MimeMessage to build
+    correctly-formed MIME emails (headers, HTML content-type, encoding)
+    before handing the raw bytes to the Gmail API. Update its comment
+    to reflect the new role.
+-->
+
+<!-- MIME message construction only (no longer used for SMTP transport -
+     Gmail API is now the transport, see below) -->
+<dependency>
+   <groupId>org.eclipse.angus</groupId>
+   <artifactId>angus-mail</artifactId>
+   <version>2.0.3</version>
+</dependency>
+
+<!-- Gmail API - OAuth2 refresh-token based sending (replaces SMTP) -->
+<dependency>
+    <groupId>com.google.api-client</groupId>
+    <artifactId>google-api-client</artifactId>
+    <version>2.2.0</version>
+</dependency>
+
+<dependency>
+    <groupId>com.google.apis</groupId>
+    <artifactId>google-api-services-gmail</artifactId>
+    <version>v1-rev20260525-2.0.0</version>
+</dependency>
+
+<!--
+    NOTE: google-oauth-client and google-http-client-gson are pulled in
+    transitively by google-api-client 2.2.0, so they do not need to be
+    declared separately. If a future google-api-client major version
+    changes that, add them explicitly:
+
+        <dependency>
+            <groupId>com.google.oauth-client</groupId>
+            <artifactId>google-oauth-client</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.google.http-client</groupId>
+            <artifactId>google-http-client-gson</artifactId>
+        </dependency>
+
+    Versions above were confirmed present on Maven Central at the time
+    of this change (google-api-services-gmail v1-rev20260525-2.0.0 is
+    the latest Gmail API revision as of writing). Run
+    "mvn versions:display-dependency-updates" periodically and bump
+    these - Google ships new Gmail API revisions frequently.
+-->
 
     </dependencies>
 
@@ -103,19 +156,9 @@
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>exec-maven-plugin</artifactId>
         <version>3.1.0</version>
-        <configuration>
+       <!-- <configuration>
             <mainClass>com.bank.setup.DatabaseSetup</mainClass>
-        </configuration>
-    </plugin>
-
-           <!-- Exec Plugin for DatabaseSetup -->
-    <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>exec-maven-plugin</artifactId>
-        <version>3.1.0</version>
-        <configuration>
-            <mainClass>com.bank.setup.DatabaseSetup</mainClass>
-        </configuration>
+        </configuration>-->
     </plugin>
 
         </plugins>

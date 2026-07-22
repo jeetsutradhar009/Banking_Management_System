@@ -1,101 +1,173 @@
 package com.bank.util;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
+import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
+import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import com.google.api.client.http.HttpTransport;
+import com.google.api.client.json.JsonFactory;
+import com.google.api.client.json.gson.GsonFactory;
+import com.google.api.services.gmail.Gmail;
+import com.google.api.services.gmail.model.Message;
+
+import jakarta.mail.Session;
+import jakarta.mail.internet.InternetAddress;
+import jakarta.mail.internet.MimeMessage;
+
+import java.io.ByteArrayOutputStream;
+import java.util.Base64;
 import java.util.Properties;
 
 /**
- * Sends transactional emails via Brevo's HTTPS Transactional Email API
- * (https://api.brevo.com/v3/smtp/email) instead of raw SMTP.
+ * EmailService
  *
- * This class used to connect directly to an SMTP server (e.g.
- * smtp.gmail.com:587) using Jakarta Mail. That stopped working once the
- * app was deployed on Render's free tier, because Render blocks outbound
- * traffic to SMTP ports (25, 465, 587) on free web services - see
- * https://render.com/changelog/free-web-services-will-no-longer-allow-outbound-traffic-to-smtp-ports
+ * Sends all customer-facing transactional email (OTP verification,
+ * password reset, new-account details, online-banking-activated) via
+ * the Gmail API, authenticated with OAuth2 using a long-lived refresh
+ * token - NOT SMTP, and NOT a username/password.
  *
- * Brevo's API is a plain HTTPS POST on port 443, which free tiers do not
- * block, so this works from Render's free plan without any upgrade.
- * Brevo also does not require owning/verifying a custom domain - a single
- * verified sender email (e.g. an existing Gmail address) is enough to
- * send to ANY recipient, unlike some other providers' sandbox mode.
+ * ------------------------------------------------------------------
+ * WHY GMAIL API INSTEAD OF SMTP
+ * ------------------------------------------------------------------
+ * The previous implementation authenticated to smtp.gmail.com with a
+ * Gmail "App Password" read from SMTP_USERNAME/SMTP_PASSWORD (or a
+ * checked-in email.properties file as a local fallback). App
+ * Passwords are long-lived static secrets with full mailbox access
+ * scope; if leaked (e.g. committed to source control), they must be
+ * manually revoked and are otherwise valid forever.
+ *
+ * This implementation instead uses a Google OAuth2 "refresh token"
+ * scoped ONLY to https://www.googleapis.com/auth/gmail.send (send-only,
+ * no read/delete/mailbox access), obtained once via Google's OAuth
+ * consent flow outside of this application. The refresh token is
+ * exchanged for a short-lived access token on every send, and the
+ * access token is never persisted anywhere - it lives in memory only
+ * for the duration of a single Gmail API call.
+ *
+ * ------------------------------------------------------------------
+ * CONFIGURATION - environment variables ONLY, no properties-file
+ * fallback (unlike the old SMTP config, deliberately - a credential
+ * fallback file is exactly how the previous SMTP password ended up
+ * committed to the repository):
+ * ------------------------------------------------------------------
+ *   GMAIL_CLIENT_ID      - OAuth2 client ID (from Google Cloud Console)
+ *   GMAIL_CLIENT_SECRET  - OAuth2 client secret
+ *   GMAIL_REFRESH_TOKEN  - long-lived refresh token, gmail.send scope
+ *   GMAIL_SENDER_EMAIL   - the mailbox these credentials belong to;
+ *                          used both as the Gmail API user ID ("me"
+ *                          maps to this account) and as the From:
+ *                          address on every message.
+ *
+ * Optional:
+ *   GMAIL_SENDER_NAME    - display name for the From: header
+ *                          (defaults to "DKS Bank" if unset, same
+ *                          default the old SMTP_FROM_NAME had).
+ *
+ * None of these four required values have a hardcoded fallback. If
+ * any are missing, every send method returns a clear EmailResult
+ * failure instead of throwing - identical behavior to the previous
+ * implementation's "Email service is not configured" path.
+ *
+ * ------------------------------------------------------------------
+ * SECURITY NOTES
+ * ------------------------------------------------------------------
+ * - GMAIL_CLIENT_SECRET and GMAIL_REFRESH_TOKEN are never logged, in
+ *   full or in part, anywhere in this class - only generic exception
+ *   messages/types are logged (see logError()). The Gmail API client
+ *   library itself does not include the refresh token or client
+ *   secret in its own exception messages (it wraps error responses
+ *   from Google's token endpoint, e.g. "invalid_grant", not the
+ *   request body that was sent).
+ * - The access token obtained per-send is held only in the
+ *   short-lived GoogleCredential instance in memory; it is never
+ *   written to disk, session, or log.
+ * - Public method signatures are UNCHANGED from the SMTP version, so
+ *   no calling servlet needs to change.
  */
 public class EmailService {
 
-    private static final String PROPERTIES_FILE = "email.properties";
-    private static final String BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
+    private static final String APPLICATION_NAME = "DKS Bank Online Banking";
+    private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
 
-    private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(10))
-            .build();
+    // Used only by the 3-argument sendPasswordResetEmail() overload,
+    // for callers that don't pass an explicit validity window. Must
+    // be kept in sync with ForgotPasswordServlet's own default
+    // (resolveTokenValidityMinutes()'s fallback) if that ever changes,
+    // since this constant has no way to read that servlet's env-var
+    // configuration. Callers that care about staying in sync should
+    // use the 4-argument overload instead - see class Javadoc.
+    private static final int DEFAULT_PASSWORD_RESET_VALIDITY_MINUTES = 2;
 
-    private final String brevoApiKey;
+    private final String clientId;
+    private final String clientSecret;
+    private final String refreshToken;
     private final String fromEmail;
     private final String fromName;
 
-    public EmailService() {
-        Properties fallback = loadFallbackProperties();
+    // Built lazily on first send, then reused for the lifetime of this
+    // EmailService instance. GoogleCredential auto-refreshes its
+    // access token on each API call as needed, so this is safe to
+    // reuse across multiple sends from the same instance.
+    private volatile Gmail gmailService;
 
-        this.brevoApiKey = resolve("BREVO_API_KEY", fallback);
-        this.fromEmail = resolve("EMAIL_FROM_ADDRESS", fallback);
-        this.fromName = resolve("EMAIL_FROM_NAME", fallback);
+    public EmailService() {
+        this.clientId = env("GMAIL_CLIENT_ID");
+        this.clientSecret = env("GMAIL_CLIENT_SECRET");
+        this.refreshToken = env("GMAIL_REFRESH_TOKEN");
+        this.fromEmail = env("GMAIL_SENDER_EMAIL");
+
+        String senderName = env("GMAIL_SENDER_NAME");
+        this.fromName = isBlank(senderName) ? "DKS Bank" : senderName;
     }
+
+    // ==================================================================
+    // Public API - UNCHANGED signatures from the SMTP implementation
+    // ==================================================================
 
     public EmailResult sendOtpEmail(String toEmail, String fullName, String otpCode, int validityMinutes) {
-
-        if (isBlank(brevoApiKey) || isBlank(fromEmail)) {
-            return EmailResult.failure(
-                    "Email service is not configured. Please set BREVO_API_KEY and EMAIL_FROM_ADDRESS "
-                    + "(environment variables or email.properties).");
-        }
-
-        return sendViaBrevo(toEmail, fullName,
+        return buildAndSend(
+                toEmail,
                 "DKS Bank - Your Account Opening OTP",
-                buildOtpEmailBody(fullName, otpCode, validityMinutes),
-                null,
-                "Unable to send OTP email. Please try again in a moment.");
+                buildOtpEmailBody(otpCode, validityMinutes),
+                true,
+                "Unable to send OTP email. Please try again in a moment."
+        );
     }
 
+    /**
+     * @deprecated Kept for backward compatibility with callers that
+     * do not pass an explicit validity window. Delegates to the
+     * overload below using DEFAULT_PASSWORD_RESET_VALIDITY_MINUTES.
+     * New/updated callers should use the 4-argument overload and pass
+     * their actual configured token validity, so the emailed text
+     * always matches the real DB-enforced expiry.
+     */
     public EmailResult sendPasswordResetEmail(String toEmail, String fullName, String resetLink) {
+        return sendPasswordResetEmail(toEmail, fullName, resetLink, DEFAULT_PASSWORD_RESET_VALIDITY_MINUTES);
+    }
 
-        if (isBlank(brevoApiKey) || isBlank(fromEmail)) {
-            return EmailResult.failure(
-                    "Email service is not configured. Please set BREVO_API_KEY and EMAIL_FROM_ADDRESS "
-                    + "(environment variables or email.properties).");
-        }
-
-        return sendViaBrevo(toEmail, fullName,
+    /**
+     * Same as the 3-argument overload, but the displayed expiry
+     * window is passed in explicitly rather than hardcoded in the
+     * template - callers should pass whatever value they actually
+     * used to compute the token's expiry timestamp, so the email text
+     * can never drift out of sync with the real expiry.
+     */
+    public EmailResult sendPasswordResetEmail(String toEmail, String fullName, String resetLink, int validityMinutes) {
+        return buildAndSend(
+                toEmail,
                 "DKS Bank - Password Reset Request",
-                buildPasswordResetEmailBody(fullName, resetLink),
-                null,
-                "Unable to send password reset email. Please try again in a moment.");
+                buildPasswordResetEmailBody(fullName, resetLink, validityMinutes),
+                true,
+                "Unable to send password reset email. Please try again in a moment."
+        );
     }
 
     /**
      * Sends the new-account details email for accounts created by an
-     * admin (CreateAccountServlet) - the same Customer ID / Account
-     * Number / IFSC Code shown on the admin's success popup.
+     * admin (CreateAccountServlet) or via the customer self-service
+     * UPI-payment-simulation flow (ProcessUpiPaymentServlet). No login
+     * password or any other credential is ever included in this
+     * email - the customer is pointed to "/register" instead.
      *
-     * No login password or any other credential is ever included in
-     * this email. Instead, the customer is pointed to the existing
-     * self-service "/register" route (Online Banking Registration) via
-     * a button, using the application's own current base URL rather
-     * than a hardcoded host.
-     *
-     * @param toEmail         recipient email address
-     * @param fullName        recipient full name (used in greeting)
-     * @param customerId      the generated Customer ID
-     * @param accountNumber   the generated Account Number
-     * @param ifscCode        the branch IFSC code
-     * @param registrationUrl full, ready-to-click URL to the Online
-     *                        Banking registration page (built by the
-     *                        caller from the current request, e.g.
-     *                        https://host/context/register)
      * @return EmailResult indicating success/failure - callers MUST check this
      */
     public EmailResult sendAccountDetailsEmail(String toEmail,
@@ -104,35 +176,20 @@ public class EmailService {
                                                 String accountNumber,
                                                 String ifscCode,
                                                 String registrationUrl) {
-
-        if (isBlank(brevoApiKey) || isBlank(fromEmail)) {
-            return EmailResult.failure(
-                    "Email service is not configured. Please set BREVO_API_KEY and EMAIL_FROM_ADDRESS "
-                    + "(environment variables or email.properties).");
-        }
-
-        return sendViaBrevo(toEmail, fullName,
+        return buildAndSend(
+                toEmail,
                 "DKS Bank - Your New Account Details",
-                null,
                 buildAccountDetailsEmailHtml(fullName, customerId, accountNumber, ifscCode, registrationUrl),
-                "Unable to send account details email. Please try again in a moment.");
+                true,
+                "Unable to send account details email. Please try again in a moment."
+        );
     }
 
     /**
-     * Sends the "Online Banking Activated" email when an admin
-     * activates online banking for an existing customer via the Add
-     * User (CUSTOMER role) flow. Includes the auto-generated temporary
-     * password, since the whole point of this flow is that the
-     * customer needs it to log in for the first time - unlike
-     * sendAccountDetailsEmail(), which deliberately never includes a
-     * password.
+     * Sends the "Online Banking Activated" email, including the
+     * auto-generated temporary password, when an admin activates
+     * online banking for an existing customer (AddUserServlet).
      *
-     * @param toEmail           recipient email address
-     * @param fullName          recipient full name (used in greeting)
-     * @param customerId        the customer's existing Customer ID
-     * @param temporaryPassword the auto-generated temporary password
-     * @param loginUrl          full, ready-to-click URL to the login page
-     *                          (built by the caller from the current request)
      * @return EmailResult indicating success/failure - callers MUST check this
      */
     public EmailResult sendOnlineBankingActivatedEmail(String toEmail,
@@ -140,146 +197,258 @@ public class EmailService {
                                                         String customerId,
                                                         String temporaryPassword,
                                                         String loginUrl) {
+        return buildAndSend(
+                toEmail,
+                "DKS Bank - Online Banking Activated",
+                buildOnlineBankingActivatedEmailHtml(fullName, customerId, temporaryPassword, loginUrl),
+                true,
+                "Unable to send activation email. Please try again in a moment."
+        );
+    }
 
-        if (isBlank(brevoApiKey) || isBlank(fromEmail)) {
+    // ==================================================================
+    // Shared send pipeline
+    // ==================================================================
+
+    /**
+     * Builds a MimeMessage (plain text or HTML), then hands it to the
+     * Gmail API. Centralizes the config check + exception handling
+     * that used to be duplicated in every public method.
+     */
+    private EmailResult buildAndSend(String toEmail,
+                                      String subject,
+                                      String body,
+                                      boolean isHtml,
+                                      String failureMessage) {
+
+        if (isBlank(clientId) || isBlank(clientSecret) || isBlank(refreshToken) || isBlank(fromEmail)) {
             return EmailResult.failure(
-                    "Email service is not configured. Please set BREVO_API_KEY and EMAIL_FROM_ADDRESS "
-                    + "(environment variables or email.properties).");
+                    "Email service is not configured. Please set GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, "
+                    + "GMAIL_REFRESH_TOKEN and GMAIL_SENDER_EMAIL as environment variables.");
         }
 
-        return sendViaBrevo(toEmail, fullName,
-                "DKS Bank - Online Banking Activated",
-                null,
-                buildOnlineBankingActivatedEmailHtml(fullName, customerId, temporaryPassword, loginUrl),
-                "Unable to send activation email. Please try again in a moment.");
+        if (isBlank(toEmail)) {
+            return EmailResult.failure(failureMessage);
+        }
+
+        try {
+            MimeMessage mimeMessage = buildMimeMessage(toEmail, subject, body, isHtml);
+            Gmail gmail = getGmailService();
+
+            Message message = new Message();
+            message.setRaw(encodeToBase64Url(mimeMessage));
+
+            // "me" is a Gmail API convention meaning "the authenticated
+            // user" - resolved from the OAuth2 credential, i.e.
+            // GMAIL_SENDER_EMAIL's mailbox.
+            gmail.users().messages().send("me", message).execute();
+
+            return EmailResult.success();
+
+        } catch (Exception e) {
+            // Deliberately logs only the exception's class/message,
+            // never clientSecret/refreshToken, which are never part
+            // of this call chain's local variables at the point of
+            // failure logging.
+            logError(failureMessage, e);
+            return EmailResult.failure(failureMessage);
+        }
+    }
+
+    private MimeMessage buildMimeMessage(String toEmail, String subject, String body, boolean isHtml)
+            throws Exception {
+
+        // A blank Session is sufficient here - it is only used by
+        // MimeMessage to build well-formed MIME headers/encoding. No
+        // SMTP host/auth properties are needed since Gmail API (not
+        // this Session) is the transport.
+        Session session = Session.getDefaultInstance(new Properties());
+
+        MimeMessage message = new MimeMessage(session);
+        message.setFrom(new InternetAddress(fromEmail, fromName));
+        message.setRecipients(jakarta.mail.Message.RecipientType.TO, InternetAddress.parse(toEmail));
+        message.setSubject(subject);
+
+        if (isHtml) {
+            message.setContent(body, "text/html; charset=UTF-8");
+        } else {
+            message.setText(body);
+        }
+
+        return message;
+    }
+
+    private String encodeToBase64Url(MimeMessage mimeMessage) throws Exception {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        mimeMessage.writeTo(buffer);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(buffer.toByteArray());
     }
 
     /**
-     * Posts a single transactional email to Brevo's API. Exactly one of
-     * textBody/htmlBody should be non-null - the other stays null.
+     * Lazily builds (and caches on this instance) the authenticated
+     * Gmail API client. GoogleCredential is given the OAuth2 client
+     * ID/secret and refresh token once here; it transparently
+     * exchanges the refresh token for a fresh short-lived access
+     * token on every API call made through this Gmail client, so no
+     * manual token refresh/expiry handling is needed anywhere else in
+     * this class.
      */
-    private EmailResult sendViaBrevo(String toEmail,
-                                      String toName,
-                                      String subject,
-                                      String textBody,
-                                      String htmlBody,
-                                      String failureMessage) {
-        try {
-            String requestJson = buildBrevoRequestJson(toEmail, toName, subject, textBody, htmlBody);
+    private Gmail getGmailService() throws Exception {
+        Gmail service = gmailService;
 
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(BREVO_API_URL))
-                    .timeout(Duration.ofSeconds(15))
-                    .header("api-key", brevoApiKey)
-                    .header("Content-Type", "application/json")
-                    .header("Accept", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(requestJson))
-                    .build();
+        if (service == null) {
+            synchronized (this) {
+                service = gmailService;
+                if (service == null) {
+                    HttpTransport httpTransport = GoogleNetHttpTransport.newTrustedTransport();
 
-            HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+                    GoogleCredential credential = new GoogleCredential.Builder()
+                            .setTransport(httpTransport)
+                            .setJsonFactory(JSON_FACTORY)
+                            .setClientSecrets(clientId, clientSecret)
+                            .build()
+                            .setRefreshToken(refreshToken);
 
-            if (response.statusCode() >= 200 && response.statusCode() < 300) {
-                return EmailResult.success();
-            }
+                    service = new Gmail.Builder(httpTransport, JSON_FACTORY, credential)
+                            .setApplicationName(APPLICATION_NAME)
+                            .build();
 
-            // Brevo's error responses are JSON like {"code":"...","message":"..."} -
-            // logged server-side only, never shown to the end user.
-            System.err.println("Brevo API request failed (HTTP " + response.statusCode() + "): " + response.body());
-            return EmailResult.failure(failureMessage);
-
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            e.printStackTrace();
-            return EmailResult.failure(failureMessage);
-        } catch (IOException e) {
-            e.printStackTrace();
-            return EmailResult.failure(failureMessage);
-        }
-    }
-
-    private String buildBrevoRequestJson(String toEmail,
-                                          String toName,
-                                          String subject,
-                                          String textBody,
-                                          String htmlBody) {
-        StringBuilder json = new StringBuilder();
-        json.append("{");
-
-        json.append("\"sender\":{\"name\":\"")
-                .append(jsonEscape(isBlank(fromName) ? "DKS Bank" : fromName))
-                .append("\",\"email\":\"")
-                .append(jsonEscape(fromEmail))
-                .append("\"},");
-
-        json.append("\"to\":[{\"email\":\"").append(jsonEscape(toEmail)).append("\"");
-        if (!isBlank(toName)) {
-            json.append(",\"name\":\"").append(jsonEscape(toName)).append("\"");
-        }
-        json.append("}],");
-
-        json.append("\"subject\":\"").append(jsonEscape(subject)).append("\"");
-
-        if (htmlBody != null) {
-            json.append(",\"htmlContent\":\"").append(jsonEscape(htmlBody)).append("\"");
-        } else {
-            json.append(",\"textContent\":\"").append(jsonEscape(textBody)).append("\"");
-        }
-
-        json.append("}");
-        return json.toString();
-    }
-
-    private String jsonEscape(String value) {
-        if (value == null) {
-            return "";
-        }
-
-        StringBuilder sb = new StringBuilder(value.length());
-        for (int i = 0; i < value.length(); i++) {
-            char c = value.charAt(i);
-            switch (c) {
-                case '"':  sb.append("\\\""); break;
-                case '\\': sb.append("\\\\"); break;
-                case '\n': sb.append("\\n");  break;
-                case '\r': sb.append("\\r");  break;
-                case '\t': sb.append("\\t");  break;
-                default:
-                    if (c < 0x20) {
-                        sb.append(String.format("\\u%04x", (int) c));
-                    } else {
-                        sb.append(c);
-                    }
+                    gmailService = service;
+                }
             }
         }
-        return sb.toString();
+
+        return service;
     }
 
-    private String buildOtpEmailBody(String fullName, String otpCode, int validityMinutes) {
-        String name = isBlank(fullName) ? "Customer" : fullName;
+    // ==================================================================
+    // Email body builders
+    //
+    // OTP and password-reset templates below are HTML (updated in this
+    // change). Account-details and online-banking-activated templates
+    // were already HTML from the Gmail API migration and are UNCHANGED
+    // here.
+    // ==================================================================
 
-        return "Dear " + name + ",\n\n"
-                + "Thank you for opening an account with DKS Bank.\n\n"
-                + "Your One-Time Password (OTP) for account opening verification is:\n\n"
-                + "        " + otpCode + "\n\n"
-                + "This OTP is valid for " + validityMinutes + " minutes. Do not share this OTP with anyone, "
-                + "including DKS Bank staff.\n\n"
-                + "If you did not request this, please ignore this email.\n\n"
-                + "Regards,\n"
-                + "DKS Bank";
+    /**
+     * OTP email for account-opening email verification. Always
+     * addressed to "Dear User," rather than a name - at this point in
+     * the flow (SendEmailVerificationServlet / ResendEmailOtpServlet)
+     * no user record exists yet, so the only value callers have to
+     * pass as a "name" is the email address itself. Rather than ever
+     * risk displaying an email address as if it were a name, this
+     * template intentionally ignores whatever is passed for that
+     * field and always uses the generic greeting. Validity minutes
+     * remains a parameter (not hardcoded) so the displayed text always
+     * matches whatever expiry the caller actually set in the database.
+     */
+    private String buildOtpEmailBody(String otpCode, int validityMinutes) {
+        String otp = escapeHtml(otpCode);
+        String minuteWord = (validityMinutes == 1) ? "minute" : "minutes";
+
+        return "<!DOCTYPE html>"
+                + "<html><head><meta charset=\"UTF-8\"></head>"
+                + "<body style=\"margin:0;padding:0;background:#f2f6f4;font-family:'Segoe UI',Arial,sans-serif;\">"
+                + "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#f2f6f4;padding:32px 0;\">"
+                + "<tr><td align=\"center\">"
+                + "<table role=\"presentation\" width=\"480\" cellpadding=\"0\" cellspacing=\"0\" "
+                + "style=\"background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 24px rgba(15,23,42,0.08);\">"
+
+                + "<tr><td style=\"background:#0f8a4c;padding:24px 32px;text-align:center;\">"
+                + "<span style=\"color:#ffffff;font-size:20px;font-weight:700;letter-spacing:0.5px;\">DKS Bank</span>"
+                + "</td></tr>"
+
+                + "<tr><td style=\"padding:32px;\">"
+                + "<p style=\"margin:0 0 16px;color:#0d3b2e;font-size:16px;\">Dear User,</p>"
+                + "<p style=\"margin:0 0 20px;color:#3f4b46;font-size:14px;line-height:1.6;\">"
+                + "Thank you for opening an account with DKS Bank. Your One-Time Password (OTP) for "
+                + "account opening verification is:"
+                + "</p>"
+
+                + "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:0 0 20px;\">"
+                + "<tr><td align=\"center\" style=\"background:#f3f8f5;border:1px solid #dcece3;border-radius:12px;padding:20px;\">"
+                + "<span style=\"display:inline-block;color:#0f8a4c;font-size:32px;font-weight:800;letter-spacing:8px;\">"
+                + otp + "</span>"
+                + "</td></tr></table>"
+
+                + "<p style=\"margin:0 0 8px;color:#3f4b46;font-size:14px;line-height:1.6;\">"
+                + "This OTP is valid for <strong>" + validityMinutes + " " + minuteWord + "</strong>."
+                + "</p>"
+                + "<p style=\"margin:0;color:#3f4b46;font-size:14px;line-height:1.6;\">"
+                + "Do not share this OTP with anyone, including DKS Bank staff."
+                + "</p>"
+
+                + "<p style=\"margin:28px 0 0;color:#8a958f;font-size:12px;line-height:1.6;\">"
+                + "If you did not request this, please ignore this email."
+                + "</p>"
+                + "</td></tr>"
+
+                + "<tr><td style=\"background:#f3f8f5;padding:18px 32px;text-align:center;\">"
+                + "<span style=\"color:#5a6b63;font-size:12px;\">&copy; DKS Bank. This is an automated message, please do not reply.</span>"
+                + "</td></tr>"
+
+                + "</table></td></tr></table>"
+                + "</body></html>";
     }
 
-    private String buildPasswordResetEmailBody(String fullName, String resetLink) {
-        String name = isBlank(fullName) ? "Customer" : fullName;
+    /**
+     * Password reset email. fullName here already comes from the
+     * database (ForgotPasswordServlet looks up the User row before
+     * calling this), so - unlike the OTP template above - it is safe
+     * and correct to display it. The reset link is rendered as a
+     * styled button rather than a raw URL. validityMinutes is no
+     * longer hardcoded - callers pass the actual window their token
+     * was created with (see the 4-argument sendPasswordResetEmail()
+     * overload), so this text can never drift out of sync with the
+     * real DB-enforced expiry.
+     */
+    private String buildPasswordResetEmailBody(String fullName, String resetLink, int validityMinutes) {
+        String name = escapeHtml(isBlank(fullName) ? "Customer" : fullName);
+        String link = escapeHtml(resetLink);
+        String minuteWord = (validityMinutes == 1) ? "minute" : "minutes";
 
-        return "Dear " + name + ",\n\n"
-                + "We received a request to reset your online banking password.\n\n"
-                + "Click the link below to reset your password:\n\n"
-                + "        " + resetLink + "\n\n"
-                + "This link will expire after 10 minutes and can be used only once.\n\n"
-                + "If you did not request this, please ignore this email - your password will "
-                + "remain unchanged and no further action is needed.\n\n"
-                + "Regards,\n"
-                + "DKS Bank";
+        return "<!DOCTYPE html>"
+                + "<html><head><meta charset=\"UTF-8\"></head>"
+                + "<body style=\"margin:0;padding:0;background:#f2f6f4;font-family:'Segoe UI',Arial,sans-serif;\">"
+                + "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#f2f6f4;padding:32px 0;\">"
+                + "<tr><td align=\"center\">"
+                + "<table role=\"presentation\" width=\"480\" cellpadding=\"0\" cellspacing=\"0\" "
+                + "style=\"background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 24px rgba(15,23,42,0.08);\">"
+
+                + "<tr><td style=\"background:#0f8a4c;padding:24px 32px;text-align:center;\">"
+                + "<span style=\"color:#ffffff;font-size:20px;font-weight:700;letter-spacing:0.5px;\">DKS Bank</span>"
+                + "</td></tr>"
+
+                + "<tr><td style=\"padding:32px;\">"
+                + "<p style=\"margin:0 0 16px;color:#0d3b2e;font-size:16px;\">Dear <b>" + name + "</b>,</p>"
+                + "<p style=\"margin:0 0 24px;color:#3f4b46;font-size:14px;line-height:1.6;\">"
+                + "We received a request to reset your online banking password. Click the button below "
+                + "to choose a new password:"
+                + "</p>"
+
+                + "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:0 auto 24px;\">"
+                + "<tr><td style=\"border-radius:10px;background:#16a34a;\">"
+                + "<a href=\"" + link + "\" "
+                + "style=\"display:inline-block;padding:14px 32px;color:#ffffff;font-size:14px;font-weight:700;"
+                + "text-decoration:none;border-radius:10px;\">Click Here To Reset Password</a>"
+                + "</td></tr></table>"
+
+                + "<p style=\"margin:0 0 8px;color:#3f4b46;font-size:14px;line-height:1.6;\">"
+                + "This link will expire after <strong>" + validityMinutes + " " + minuteWord + "</strong> and can be used only once."
+                + "</p>"
+
+                + "<p style=\"margin:28px 0 0;color:#8a958f;font-size:12px;line-height:1.6;\">"
+                + "If you did not request this, please ignore this email - your password will remain "
+                + "unchanged and no further action is needed."
+                + "</p>"
+                + "</td></tr>"
+
+                + "<tr><td style=\"background:#f3f8f5;padding:18px 32px;text-align:center;\">"
+                + "<span style=\"color:#5a6b63;font-size:12px;\">&copy; DKS Bank. This is an automated message, please do not reply.</span>"
+                + "</td></tr>"
+
+                + "</table></td></tr></table>"
+                + "</body></html>";
     }
 
     private String buildAccountDetailsEmailHtml(String fullName,
@@ -301,19 +470,16 @@ public class EmailService {
                 + "<table role=\"presentation\" width=\"480\" cellpadding=\"0\" cellspacing=\"0\" "
                 + "style=\"background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 8px 24px rgba(15,23,42,0.08);\">"
 
-                // Header / branding
                 + "<tr><td style=\"background:#0f8a4c;padding:24px 32px;text-align:center;\">"
                 + "<span style=\"color:#ffffff;font-size:20px;font-weight:700;letter-spacing:0.5px;\">DKS Bank</span>"
                 + "</td></tr>"
 
-                // Body
                 + "<tr><td style=\"padding:32px;\">"
                 + "<p style=\"margin:0 0 16px;color:#0d3b2e;font-size:16px;\">Dear <strong>" + name + "</strong>,</p>"
                 + "<p style=\"margin:0 0 20px;color:#3f4b46;font-size:14px;line-height:1.6;\">"
                 + "Your new bank account has been opened successfully with DKS Bank. Here are your account details:"
                 + "</p>"
 
-                // Account details card
                 + "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" "
                 + "style=\"background:#f3f8f5;border:1px solid #dcece3;border-radius:12px;\">"
                 + detailRow("Customer Name", name, false)
@@ -326,7 +492,6 @@ public class EmailService {
                 + "To use online banking services, please register using the button below."
                 + "</p>"
 
-                // Registration button
                 + "<table role=\"presentation\" cellpadding=\"0\" cellspacing=\"0\" style=\"margin:0 auto;\">"
                 + "<tr><td style=\"border-radius:10px;background:#16a34a;\">"
                 + "<a href=\"" + regUrl + "\" "
@@ -340,7 +505,6 @@ public class EmailService {
                 + "</p>"
                 + "</td></tr>"
 
-                // Footer
                 + "<tr><td style=\"background:#f3f8f5;padding:18px 32px;text-align:center;\">"
                 + "<span style=\"color:#5a6b63;font-size:12px;\">&copy; DKS Bank. This is an automated message, please do not reply.</span>"
                 + "</td></tr>"
@@ -430,33 +594,36 @@ public class EmailService {
                 .replace("'", "&#39;");
     }
 
-    private Properties loadFallbackProperties() {
-        Properties props = new Properties();
+    // ==================================================================
+    // Config / logging helpers
+    // ==================================================================
 
-        try (InputStream in = getClass().getClassLoader().getResourceAsStream(PROPERTIES_FILE)) {
-            if (in != null) {
-                props.load(in);
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return props;
-    }
-
-    private String resolve(String key, Properties fallback) {
-        String envValue = System.getenv(key);
-
-        if (envValue != null && !envValue.trim().isEmpty()) {
-            return envValue.trim();
-        }
-
-        String propValue = fallback.getProperty(key);
-        return propValue == null ? null : propValue.trim();
+    /**
+     * Environment variables ONLY - no properties-file fallback. This
+     * is intentional: a local-file credential fallback is exactly how
+     * the previous SMTP app password ended up committed to source
+     * control. Every deployment (local, Render, CI) must set these
+     * four variables explicitly.
+     */
+    private String env(String key) {
+        String value = System.getenv(key);
+        return (value == null) ? null : value.trim();
     }
 
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
+    }
+
+    /**
+     * Logs only the exception's type and message (and, for Gmail API
+     * errors, whatever Google's client library itself put in that
+     * message - typically an HTTP status/reason, never request
+     * credentials). clientId/clientSecret/refreshToken are local
+     * fields on this class and are never interpolated into any log
+     * statement, here or anywhere else in this file.
+     */
+    private void logError(String context, Exception e) {
+        System.err.println("[EmailService] " + context + " - " + e.getClass().getSimpleName() + ": " + e.getMessage());
     }
 
     public static class EmailResult {

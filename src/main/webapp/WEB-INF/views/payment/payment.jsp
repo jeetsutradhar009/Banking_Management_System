@@ -18,7 +18,7 @@
     <title>Complete Payment - DKS Bank</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <link rel="icon" type="image/png" href="${pageContext.request.contextPath}/images/logo.png">
+    <link rel="icon" type="image/png" href="images/logo.png">
 
     <link rel="stylesheet" href="${pageContext.request.contextPath}/css/oldStyle.css?v=116">
 
@@ -493,7 +493,7 @@
                     '<div class="pay-success-row"><span>IFSC Code</span><strong>' + data.ifscCode + '</strong></div>' +
                 '</div>' +
                 '<p style="font-size:.78rem;color:#1f6b4a;margin:0 0 16px;"><i class="bi bi-envelope-check"></i> These details have also been emailed to you.</p>' +
-                '<button type="button" class="pay-btn" onclick="window.location.href=contextPath+\'/login\'">Go to Login</button>';
+                '<button type="button" class="pay-btn" onclick="window.location.href=contextPath+\'/register\'">Register for Online Banking</button>';
 
             resultBox.style.display = "block";
         }
